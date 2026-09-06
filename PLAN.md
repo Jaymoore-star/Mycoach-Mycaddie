@@ -65,7 +65,7 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 - [x] 4. Onboarding → profile creation — **done**, 5 steps + coach roster
 - [x] 5. Dashboard + 90-Day Program — **done**, curriculum ported (1,937 lines)
 - [x] 6. Caddie mode — **done**, 18-course library, WHS handicap, club recommendation
-- [ ] 7. Launch Monitor + My Bag
+- [x] 7. Launch Monitor + My Bag — **done**
 - [ ] 8. Stats / Analytics / Handicap / Streak
 - [ ] 9. Swing video + AI analysis
 - [ ] 10. 3D swing visualiser (`three.js` → `expo-gl`) — deferred, highest risk

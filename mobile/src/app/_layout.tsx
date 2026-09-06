@@ -107,6 +107,7 @@ function RootNavigator({ background }: { background: string }) {
         <Stack.Screen name="launch" />
         <Stack.Screen name="guide" />
         <Stack.Screen name="round/[id]" />
+        <Stack.Screen name="launch/[id]" />
       </Stack.Protected>
 
       <Stack.Protected guard={!isAuthenticated}>
