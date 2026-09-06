@@ -57,6 +57,80 @@ Ports over essentially unchanged from `reference/convex/schema.ts`:
 Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 `stats` (870), `profile` (810).
 
+## Resume here
+
+**Last worked: 5 September 2026. Steps 1–7 of 10 complete, all pushed to
+`main` (`32f4927`). Working tree clean.**
+
+### Start the app
+
+```bash
+cd mobile
+npx convex dev                 # terminal 1 — backend watcher
+npx expo start --tunnel        # terminal 2 — must use --tunnel on this Wi-Fi
+```
+
+`--tunnel` is not optional on the "LQ Admin" network: it runs AP client
+isolation, so the phone cannot reach Metro over the LAN. If port 8081 is busy,
+an old Metro is still running — `Ctrl+C` it first.
+
+### Next up — step 8: Stats / Analytics / Handicap / Streak
+
+Four screens, all currently stubs in `src/app/`. The data and backend maths
+mostly exist already:
+
+- **Handicap** — `api.rounds.getHandicapData` is written and returns index,
+  trend and contributing rounds. The screen just needs to render it.
+- **Stats** — needs `convex/shots.ts` ported (`logShot`, `getRecentShots`,
+  `deleteShot`) plus `convex/skillTests.ts` and `convex/lib/skillTests.ts`.
+- **Streak** — needs `convex/streaks.ts` ported.
+- **Analytics** — needs `convex/analytics.ts` ported.
+
+Reference sources live in `reference/convex/` and `reference/src/pages/`.
+
+**Charts are the one real unknown.** The reference uses `recharts`, which is
+web-only. `react-native-svg` is already installed, so simple trend lines and
+bars can be drawn directly; reach for `victory-native` only if that proves
+fiddly.
+
+### Rules that must not be broken
+
+1. **Client code may only import from `convex/lib/*` and `convex/_generated/api`.**
+   Importing a Convex *function* module (`convex/clubs.ts`, etc.) pulls
+   `@convex-dev/auth/server` → `jose` → `node:buffer` into the bundle and Metro
+   fails to resolve it. Shared constants belong in `convex/lib/`.
+2. **Never use `toISOString().split('T')[0]` for a user-facing date.** That is
+   UTC. The client sends its own local date via `localDate()` in
+   `src/lib/date.ts`, and the server validates the format.
+3. **Check ownership in every query and mutation.** Ids arrive from the client.
+   Follow the `ownedProfile` helper pattern.
+4. **Enforce gates server-side.** Disabled buttons are a convenience only.
+5. **Numbers use `<ThemedText variant="stat">`.** Playfair's old-style figures
+   render zero short, so "0d" reads as "od".
+
+### Verify before committing
+
+```bash
+npx tsc --noEmit                        # app
+npx tsc --noEmit -p convex              # backend
+npx expo export --platform android      # proves Metro can actually bundle it
+```
+
+The export step matters: `tsc` passing does **not** prove the bundle builds —
+that is how the `node:buffer` problem slipped through.
+
+### Bugs fixed here that are still live in the Hercules app
+
+Worth fixing there too if anyone is using it:
+
+- `convex/lib/caddie.ts` negates `elevAdj` and `pinAdj`, inverting elevation
+  and pin-position advice — it tells golfers to club **down** hitting uphill. A
+  20-yard elevation change produces a 40-yard error. Fix: drop the two `-`
+  signs.
+- Dates computed in UTC roll the day over at the wrong local hour.
+- `getClubAverages` performs no ownership check; `deleteSession` / `deleteShot`
+  check only that *a* user is signed in.
+
 ## Build order
 
 - [x] 1. Scaffold Expo + expo-router + styling + theme — **done**, bundles clean
@@ -87,7 +161,7 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 - [x] Convex account — done, project `mycoach-mycaddie-457e1`
 - [x] Google OAuth — done, `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` set on the deployment
 - [ ] OpenAI API key — for coach + swing analysis (needed at step 9)
-- [ ] OpenGolfAPI key — for the course library (needed at step 6)
+- [ ] OpenGolfAPI key — optional; the built-in 18-course library covers step 6
 
 ## Launch checklist — do NOT do these during development
 
