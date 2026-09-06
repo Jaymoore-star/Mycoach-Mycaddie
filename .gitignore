@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Secrets and local deployment config.
+# mobile/.env.local holds CONVEX_DEPLOYMENT and is written by `npx convex dev`.
+# Each developer generates their own — it must never be committed.
+.env
+.env.local
+.env.*.local
+
+# Expo / Metro
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+
+# Native build output and signing material
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# Convex local state
+.convex/
+
+# Google OAuth client secret downloaded from Cloud Console.
+# The real values live as Convex env vars (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET),
+# set with `npx convex env set`. This file must never be committed.
+client_secret*.json
+
+# Read-only Hercules export, kept locally as the porting reference.
+# Not part of this app; re-downloadable from Hercules Settings -> Export.
+reference/
