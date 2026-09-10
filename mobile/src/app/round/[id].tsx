@@ -12,7 +12,7 @@ import {
   RotateCcw,
   Wind,
 } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '@/convex/_generated/api';
@@ -76,6 +76,27 @@ const FIRMNESS: readonly ChipOption<Firmness>[] = [
   { value: 'firm', label: 'Firm' },
 ];
 
+/**
+ * Conditions that change shot to shot, tagged with the hole they belong to.
+ *
+ * Wind speed, green firmness and temperature are deliberately NOT here: they
+ * hold for the whole round, and resetting them every hole meant re-entering
+ * them eighteen times.
+ */
+type ShotConditions = {
+  hole: number;
+  distance: number;
+  lie: Lie;
+  windDir: WindDir;
+  elevation: number;
+  pinPos: PinPos;
+};
+
+/** A full tee shot on the given hole. Module scope keeps the identity stable. */
+function defaultsFor(hole: number, yards: number): ShotConditions {
+  return { hole, distance: yards, lie: 'tee', windDir: 'none', elevation: 0, pinPos: 'middle' };
+}
+
 export default function RoundScreen() {
   const colors = useTheme();
   const router = useRouter();
@@ -92,23 +113,23 @@ export default function RoundScreen() {
   const logHole = useMutation(api.rounds.logHoleScore);
   const finishRound = useMutation(api.rounds.finishRound);
 
-  const [holeNumber, setHoleNumber] = useState(1);
   const [busy, setBusy] = useState(false);
   const [showConditions, setShowConditions] = useState(false);
-  const [jumpedToFirstUnplayed, setJumpedToFirstUnplayed] = useState(false);
 
-  // Resuming should land on the next hole to play, not back at the tee.
-  // Runs once per mount — after that the golfer's own navigation wins.
-  useEffect(() => {
-    if (!round || jumpedToFirstUnplayed) return;
-
+  /** First hole with no score logged, or 18 once the card is full. */
+  const firstUnplayed = (() => {
+    if (!round) return 1;
     const played = new Set(round.holes.map((h) => h.hole));
     let next = 1;
     while (next <= 18 && played.has(next)) next++;
+    return next > 18 ? 18 : next;
+  })();
 
-    setHoleNumber(next > 18 ? 18 : next);
-    setJumpedToFirstUnplayed(true);
-  }, [round, jumpedToFirstUnplayed]);
+  // Resuming lands on the next hole to play rather than back at the tee.
+  // Derived rather than assigned in an effect: null simply means "the golfer
+  // hasn't navigated yet", so there is no setState-during-mount cascade.
+  const [selectedHole, setSelectedHole] = useState<number | null>(null);
+  const holeNumber = selectedHole ?? firstUnplayed;
 
   const course = round?.courseId ? getCourseById(round.courseId) : null;
   const courseHole = course?.holes.find((h) => h.hole === holeNumber);
@@ -119,31 +140,29 @@ export default function RoundScreen() {
   const par = courseHole?.par ?? 4;
 
   // ─── Shot conditions ──────────────────────────────────────────────────
-  const [distance, setDistance] = useState(holeYards);
-  const [lie, setLie] = useState<Lie>('tee');
+  const [shotDraft, setShotDraft] = useState<ShotConditions | null>(null);
   const [windSpeed, setWindSpeed] = useState(0);
-  const [windDir, setWindDir] = useState<WindDir>('none');
-  const [elevation, setElevation] = useState(0);
-  const [pinPos, setPinPos] = useState<PinPos>('middle');
   const [firmness, setFirmness] = useState<Firmness>('medium');
   const [temperature, setTemperature] = useState(70);
 
+  // Keyed to the hole: a draft from another hole is ignored, which resets the
+  // shot cleanly without an effect. Carrying a previous hole's lie forward
+  // would silently produce wrong yardages. Memoized so the recommendation
+  // below has a stable dependency instead of six destructured fields.
+  const shot =
+    shotDraft && shotDraft.hole === holeNumber
+      ? shotDraft
+      : defaultsFor(holeNumber, holeYards);
+
+  const { distance, lie, windDir, elevation, pinPos } = shot;
+  const patchShot = (patch: Partial<ShotConditions>) => setShotDraft({ ...shot, ...patch });
+
   /** Back to a full tee shot on this hole. */
-  function resetConditions(yards: number) {
-    setDistance(yards);
-    setLie('tee');
+  function resetConditions() {
+    setShotDraft(defaultsFor(holeNumber, holeYards));
     setWindSpeed(0);
-    setWindDir('none');
-    setElevation(0);
-    setPinPos('middle');
     setFirmness('medium');
   }
-
-  // Each hole starts as a fresh tee shot at its own yardage. Carrying the
-  // previous hole's lie and wind over would silently give bad numbers.
-  useEffect(() => {
-    resetConditions(holeYards);
-  }, [holeNumber, holeYards]);
 
   // ─── Score entry ──────────────────────────────────────────────────────
   const [score, setScore] = useState<number | null>(null);
@@ -156,7 +175,7 @@ export default function RoundScreen() {
   const effectiveFairway = fairway ?? logged?.fairwayHit ?? null;
   const effectiveGir = gir ?? logged?.girHit ?? null;
 
-  const recommendation = useMemo(() => {
+  const recommendation = (() => {
     if (!profile) return null;
 
     const conditions: CaddieConditions = {
@@ -183,19 +202,7 @@ export default function RoundScreen() {
           )
         : undefined,
     );
-  }, [
-    profile,
-    tendencies,
-    course?.altitudeFt,
-    distance,
-    lie,
-    windSpeed,
-    windDir,
-    elevation,
-    pinPos,
-    firmness,
-    temperature,
-  ]);
+  })();
 
   function goToHole(n: number) {
     if (n < 1 || n > 18) return;
@@ -203,7 +210,7 @@ export default function RoundScreen() {
     setPutts(null);
     setFairway(null);
     setGir(null);
-    setHoleNumber(n);
+    setSelectedHole(n);
   }
 
   async function saveHole(advance: boolean) {
@@ -358,10 +365,10 @@ export default function RoundScreen() {
                 max={700}
                 step={5}
                 suffix=" yds"
-                onChange={setDistance}
+                onChange={(n) => patchShot({ distance: n })}
               />
-              <ChipRow label="Lie" options={LIES} value={lie} onChange={setLie} />
-              <ChipRow label="Wind" options={WIND_DIRS} value={windDir} onChange={setWindDir} />
+              <ChipRow label="Lie" options={LIES} value={lie} onChange={(v) => patchShot({ lie: v })} />
+              <ChipRow label="Wind" options={WIND_DIRS} value={windDir} onChange={(v) => patchShot({ windDir: v })} />
               {windDir !== 'none' && (
                 <Stepper
                   label="Wind speed"
@@ -381,9 +388,9 @@ export default function RoundScreen() {
                 step={5}
                 suffix=" yds"
                 signed
-                onChange={setElevation}
+                onChange={(n) => patchShot({ elevation: n })}
               />
-              <ChipRow label="Pin position" options={PIN_POSITIONS} value={pinPos} onChange={setPinPos} />
+              <ChipRow label="Pin position" options={PIN_POSITIONS} value={pinPos} onChange={(v) => patchShot({ pinPos: v })} />
               <ChipRow label="Green" options={FIRMNESS} value={firmness} onChange={setFirmness} />
               <Stepper
                 label="Temperature"
@@ -399,7 +406,7 @@ export default function RoundScreen() {
                 label="Reset to tee shot"
                 variant="ghost"
                 icon={<RotateCcw size={16} color={colors.text} />}
-                onPress={() => resetConditions(holeYards)}
+                onPress={resetConditions}
               />
             </View>
           )}

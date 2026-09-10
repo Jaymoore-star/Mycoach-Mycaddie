@@ -1,6 +1,7 @@
 // My Coach / My Caddie — Coach roster
 
-export type CoachId = "que" | "mason" | "sam" | "dom";
+export type { CoachId } from "@/convex/lib/coachLevels";
+import type { CoachId } from "@/convex/lib/coachLevels";
 
 export type TtsVoice = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" | "coral" | "ash" | "sage" | "ballad" | "verse";
 
@@ -157,7 +158,10 @@ export const COACHES: Coach[] = [
   },
 ];
 
-export const DEFAULT_COACH_ID: CoachId = "que";
+// Level mapping and ids live in convex/lib/coachLevels.ts so the server
+// and tests can read them without Metro resolving the portrait assets.
+export { COACH_FOR_SKILL, DEFAULT_COACH_ID } from "@/convex/lib/coachLevels";
+
 
 export function getCoachById(id: string | undefined): Coach {
   return COACHES.find((c) => c.id === id) ?? COACHES[0];

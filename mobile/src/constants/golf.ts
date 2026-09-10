@@ -1,27 +1,20 @@
+import { PHASES, PHASE_ORDER, type Phase } from '@/convex/lib/curriculum';
+
 /**
  * Golf domain constants, ported from the web app.
  * These mirror the union types in the Convex schema — keep them in sync.
  */
 
-export const PHASE_ORDER = [
-  'putting',
-  'short_game',
-  'pitching',
-  'mid_irons',
-  'hybrids_woods',
-  'driver',
-] as const;
+// Phase identifiers and metadata come from the curriculum, which the server
+// also uses — one definition, no drift.
+export { PHASES, PHASE_ORDER, type Phase } from '@/convex/lib/curriculum';
 
-export type Phase = (typeof PHASE_ORDER)[number];
-
-export const PHASE_LABELS: Record<Phase, string> = {
-  putting: 'Putting',
-  short_game: 'Short Game',
-  pitching: 'Pitching (≤120 yds)',
-  mid_irons: 'Mid Irons',
-  hybrids_woods: 'Hybrids & Woods',
-  driver: 'Driver',
-};
+// Derived from the curriculum so the label can never differ between screens.
+// The two used to disagree: "Hybrids & Woods" here vs "Hybrids & Fairway
+// Woods" in the curriculum, so Home and Program showed different names.
+export const PHASE_LABELS: Record<Phase, string> = Object.fromEntries(
+  PHASE_ORDER.map((p) => [p, PHASES[p].label]),
+) as Record<Phase, string>;
 
 /** Shown on the marketing screen and phase cards. */
 export const PHASE_BLURBS: Record<Phase, string> = {
@@ -99,7 +92,9 @@ export const COACHES = [
 
 export type CoachId = (typeof COACHES)[number]['id'];
 
-export const PROGRAM_DAYS = 90;
+// Re-exported so screens have one import site, but defined once in
+// convex/lib/program.ts alongside the phase boundaries the server uses.
+export { PROGRAM_DAYS } from '@/convex/lib/program';
 export const DEFAULT_TARGET_SCORE = 80;
 
 export function greeting(date = new Date()): string {

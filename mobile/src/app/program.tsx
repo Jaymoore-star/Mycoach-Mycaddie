@@ -14,32 +14,26 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '@/convex/_generated/api';
-import {
-  PHASES,
-  PHASE_ORDER,
-  type Drill,
-  type Phase,
-  generateSession,
-} from '@/convex/lib/curriculum';
+import { PHASES, PHASE_ORDER, type Drill, generateSession } from '@/convex/lib/curriculum';
+import { PHASE_DAY_START, PROGRAM_DAYS, getDayInPhase } from '@/convex/lib/program';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { ThemedText } from '@/components/ui/text';
-import { PROGRAM_DAYS } from '@/constants/golf';
 import { localDate } from '@/lib/date';
 import { GOLD, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-/** 6 phases x 15 days. Mirrors PHASE_DAY_START in convex/profiles.ts. */
-const PHASE_DAY_START: Record<Phase, number> = {
-  putting: 1,
-  short_game: 16,
-  pitching: 31,
-  mid_irons: 46,
-  hybrids_woods: 61,
-  driver: 76,
-};
+/**
+ * Minutes since a session row was created.
+ *
+ * Module scope on purpose: `Date.now()` inside the component body makes the
+ * render impure, which stops React Compiler optimising the screen.
+ */
+function minutesSince(creationTime: number | undefined): number {
+  return creationTime == null ? 0 : (Date.now() - creationTime) / 60_000;
+}
 
 export default function ProgramScreen() {
   const colors = useTheme();
@@ -60,6 +54,9 @@ export default function ProgramScreen() {
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Must sit with the other hooks, above the early return below — a hook
+  // after a conditional return changes the hook count between renders.
+  const [rushed, setRushed] = useState(false);
 
   if (!profile) {
     return (
@@ -77,7 +74,7 @@ export default function ProgramScreen() {
   }
 
   const phase = profile.currentPhase;
-  const dayInPhase = profile.currentDay - PHASE_DAY_START[phase] + 1;
+  const dayInPhase = getDayInPhase(profile.currentDay, phase);
 
   const daily = generateSession(
     phase,
@@ -95,10 +92,6 @@ export default function ProgramScreen() {
   const advancedToday = profile.lastAdvancedDate === date;
   const finished = profile.currentDay >= PROGRAM_DAYS;
 
-  // Drills are self-reported, so this is a nudge and never a block — real
-  // verification comes from skills tests and logged shot data, not checkboxes.
-  const minutesOnSession = session ? (Date.now() - session._creationTime) / 60_000 : 0;
-  const rushed = allDone && minutesOnSession < daily.estimatedMinutes * 0.25;
 
   async function toggleDrill(drill: Drill) {
     if (!profile || advancedToday) return;
@@ -118,6 +111,7 @@ export default function ProgramScreen() {
 
       if (completed.includes(drill.id)) {
         await uncompleteDrill({ sessionId, drillId: drill.id });
+        setRushed(false);
         return;
       }
 
@@ -126,12 +120,14 @@ export default function ProgramScreen() {
       // Warn on the tick that finishes the session, while the golfer is still
       // looking at the drills — an inline card below the fold gets missed.
       const finishesSession = completed.length + 1 >= daily.drills.length;
-      if (finishesSession && minutesOnSession < daily.estimatedMinutes * 0.25) {
+      const elapsed = minutesSince(session?._creationTime);
+      if (finishesSession && elapsed < daily.estimatedMinutes * 0.25) {
+        setRushed(true);
         Alert.alert(
           'That was quick',
           `This session is about ${daily.estimatedMinutes} minutes of work, and you logged it in ` +
-            `under ${Math.max(1, Math.round(minutesOnSession))} minute${
-              Math.round(minutesOnSession) === 1 ? '' : 's'
+            `under ${Math.max(1, Math.round(elapsed))} minute${
+              Math.round(elapsed) === 1 ? '' : 's'
             }.\n\n` +
             'Ticking drills you have not done only fools the program. Your skills test will ' +
             'find the gap, and the handicap you build will not be real.',

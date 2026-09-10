@@ -5,6 +5,15 @@ import type { Doc, Id } from './_generated/dataModel';
 import { type MutationCtx, type QueryCtx, mutation, query } from './_generated/server';
 import { type ShotLogEntry, extractTendencies } from './lib/caddie';
 import { COURSE_LIBRARY, type TeeBox } from './lib/courses';
+import {
+  MIN_SCORES_FOR_INDEX,
+  type ScoreDifferential,
+  contributingRounds,
+  handicapIndex,
+  handicapTrend,
+  scoreDifferential,
+  scoresToUse,
+} from './lib/handicap';
 
 const TEE_VALIDATOR = v.union(
   v.literal('championship'),
@@ -229,40 +238,14 @@ export const getPlayerTendencies = query({
   },
 });
 
-type Differential = {
-  date: string;
-  courseName: string;
-  grossScore: number;
-  differential: number;
-};
-
 /**
- * WHS: how many of the best differentials count, by rounds available.
- * Straight from the World Handicap System table.
- */
-function differentialsToUse(n: number): number {
-  if (n <= 5) return 1;
-  if (n <= 8) return 2;
-  if (n <= 9) return 3;
-  if (n <= 11) return 4;
-  if (n <= 14) return 5;
-  if (n <= 16) return 6;
-  if (n <= 18) return 7;
-  return 8;
-}
-
-function indexFrom(diffs: Differential[]): number {
-  const n = diffs.length;
-  const best = [...diffs].sort((a, b) => a.differential - b.differential).slice(0, differentialsToUse(n));
-  const avg = best.reduce((s, d) => s + d.differential, 0) / best.length;
-  return Math.round(avg * 0.96 * 10) / 10;
-}
-
-/**
- * WHS Handicap Index.
+ * WHS Handicap Index, trend and contributing rounds.
  *
- * Differential = (gross score − course rating) × 113 / slope, then the mean of
- * the best N differentials × 0.96.
+ * All arithmetic lives in convex/lib/handicap.ts so it is unit tested and
+ * shared with the client. Only 18-hole rounds that carry a course rating and
+ * slope are eligible: without them there is no valid differential, and the
+ * version this was ported from substituted strokes-vs-par, mixing two
+ * incompatible scales into one average.
  */
 export const getHandicapData = query({
   args: { profileId: v.id('golferProfiles') },
@@ -272,70 +255,61 @@ export const getHandicapData = query({
   ): Promise<{
     handicapIndex: number | null;
     trend: { date: string; index: number; courseName: string }[];
-    contributingRounds: (Differential & { contributing: boolean })[];
+    contributingRounds: (ScoreDifferential & { contributing: boolean })[];
     lowestIndex: number | null;
+    /** How many differentials the index averaged (WHS Rule 5.2a). */
     roundsUsed: number;
+    /** Eligible 18-hole rounds with rating and slope on file. */
+    eligibleRounds: number;
+    /** Rounds excluded for missing rating/slope, so the UI can explain why. */
+    ineligibleRounds: number;
+    /** Acceptable scores still needed before an index can be issued. */
+    scoresNeeded: number;
   }> => {
-    const empty = {
-      handicapIndex: null,
-      trend: [],
-      contributingRounds: [],
-      lowestIndex: null,
-      roundsUsed: 0,
-    };
-
     const owned = await ownedProfile(ctx, args.profileId);
-    if (!owned) return empty;
+    if (!owned) {
+      return {
+        handicapIndex: null,
+        trend: [],
+        contributingRounds: [],
+        lowestIndex: null,
+        roundsUsed: 0,
+        eligibleRounds: 0,
+        ineligibleRounds: 0,
+        scoresNeeded: MIN_SCORES_FOR_INDEX,
+      };
+    }
 
+    // Read more than 20 because some rows will be filtered out below; the
+    // helper still only uses the 20 most recent eligible scores.
     const rounds: Doc<'roundScores'>[] = await ctx.db
       .query('roundScores')
       .withIndex('by_profile', (q) => q.eq('profileId', args.profileId))
       .order('desc')
-      .take(20);
+      .take(60);
 
-    const completed = rounds.filter((r) => r.holes.length >= 18);
-    if (completed.length === 0) return empty;
+    const full = rounds.filter((r) => r.holes.length >= 18);
+    const eligible = full.filter((r) => r.courseRating && r.courseSlope);
 
-    const withDifferentials: Differential[] = completed.map((r) => ({
+    const differentials: ScoreDifferential[] = eligible.slice(0, 20).map((r) => ({
       date: r.date,
       courseName: r.courseName,
       grossScore: r.totalScore,
-      differential:
-        r.courseRating && r.courseSlope
-          ? Math.round(((r.totalScore - r.courseRating) * 113) / r.courseSlope * 10) / 10
-          : // No rating/slope on file: fall back to strokes vs par.
-            Math.round(r.scoreDifferential * 10) / 10,
+      differential: scoreDifferential(r.totalScore, r.courseRating!, r.courseSlope!),
     }));
 
-    const numBest = differentialsToUse(completed.length);
-    const bestSet = new Set(
-      [...withDifferentials]
-        .sort((a, b) => a.differential - b.differential)
-        .slice(0, numBest)
-        .map((d) => d.date + d.courseName),
-    );
-
-    // Running index after each round, oldest first, for the trend chart.
-    const chronological = [...withDifferentials].reverse();
-    const trend: { date: string; index: number; courseName: string }[] = [];
-    for (let i = 0; i < chronological.length; i++) {
-      const slice = chronological.slice(0, i + 1);
-      if (slice.length < 3) continue; // WHS needs a minimum history
-      const last = slice[slice.length - 1];
-      trend.push({ date: last.date, index: indexFrom(slice), courseName: last.courseName });
-    }
-
-    const handicapIndex = indexFrom(withDifferentials);
+    const index = handicapIndex(differentials.map((d) => d.differential));
+    const trend = handicapTrend(differentials);
 
     return {
-      handicapIndex,
+      handicapIndex: index,
       trend,
-      contributingRounds: withDifferentials.map((r) => ({
-        ...r,
-        contributing: bestSet.has(r.date + r.courseName),
-      })),
-      lowestIndex: trend.length > 0 ? Math.min(...trend.map((t) => t.index)) : handicapIndex,
-      roundsUsed: numBest,
+      contributingRounds: contributingRounds(differentials),
+      lowestIndex: trend.length > 0 ? Math.min(...trend.map((t) => t.index)) : index,
+      roundsUsed: scoresToUse(differentials.length).count,
+      eligibleRounds: differentials.length,
+      ineligibleRounds: full.length - eligible.length,
+      scoresNeeded: Math.max(0, MIN_SCORES_FOR_INDEX - differentials.length),
     };
   },
 });

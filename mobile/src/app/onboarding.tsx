@@ -1,6 +1,6 @@
 import { useMutation } from 'convex/react';
 import { Image } from 'expo-image';
-import { CheckCircle2, ChevronLeft, ChevronRight, Star } from 'lucide-react-native';
+import { CheckCircle2, ChevronRight, Star } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -16,13 +16,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '@/convex/_generated/api';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { ThemedText } from '@/components/ui/text';
-import { COACHES, type CoachId } from '@/constants/coaches';
+import { COACHES, COACH_FOR_SKILL, type CoachId } from '@/constants/coaches';
 import {
   PHASE_BLURBS,
   PHASE_LABELS,
   PHASE_ORDER,
   PROGRAM_DAYS,
+  SKILL_LABELS,
   SKILL_OPTIONS,
   type SkillLevel,
 } from '@/constants/golf';
@@ -187,7 +189,12 @@ export default function OnboardingScreen() {
                 return (
                   <Pressable
                     key={sl.value}
-                    onPress={() => setSkillLevel(sl.value)}
+                    onPress={() => {
+                      setSkillLevel(sl.value);
+                      // The coach carries the difficulty tier, so it must
+                      // follow the level or the drills won't match.
+                      setCoachId(COACH_FOR_SKILL[sl.value]);
+                    }}
                     style={[
                       styles.option,
                       {
@@ -227,6 +234,21 @@ export default function OnboardingScreen() {
               Each coach teaches a different level of the system. You can switch any time.
             </ThemedText>
 
+            {skillLevel && coachId !== COACH_FOR_SKILL[skillLevel] && (
+              <Card style={[styles.mismatch, { borderColor: colors.warning }]}>
+                <ThemedText variant="label" style={{ color: colors.warning }}>
+                  Not matched to your level
+                </ThemedText>
+                <ThemedText variant="caption" tone="secondary">
+                  Your drills come from the coach you pick, so{' '}
+                  {COACHES.find((c) => c.id === coachId)?.name} will set{' '}
+                  {COACHES.find((c) => c.id === coachId)?.levelSpec.subtitle.toLowerCase()} work
+                  regardless of the {SKILL_LABELS[skillLevel].toLowerCase()} level you chose.{' '}
+                  {COACHES.find((c) => c.id === COACH_FOR_SKILL[skillLevel])?.name} is the match.
+                </ThemedText>
+              </Card>
+            )}
+
             <View style={styles.optionList}>
               {COACHES.map((coach) => {
                 const selected = coachId === coach.id;
@@ -261,6 +283,13 @@ export default function OnboardingScreen() {
                     <View style={styles.coachInfo}>
                       <View style={styles.coachHead}>
                         <ThemedText variant="heading">{coach.name}</ThemedText>
+                        {skillLevel && COACH_FOR_SKILL[skillLevel] === coach.id && (
+                          <View style={[styles.badgePill, { backgroundColor: colors.primary }]}>
+                            <ThemedText variant="caption" style={{ color: colors.primaryText }}>
+                              Your level
+                            </ThemedText>
+                          </View>
+                        )}
                         {selected && <CheckCircle2 size={18} color={colors.primary} />}
                       </View>
                       <ThemedText
@@ -462,6 +491,12 @@ const styles = StyleSheet.create({
   },
   phaseText: { flex: 1, gap: 1 },
 
+  mismatch: { borderWidth: 1, gap: Spacing.one, marginTop: Spacing.two },
+  badgePill: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 1,
+    borderRadius: Radius.pill,
+  },
   handicapBlock: { gap: Spacing.one, marginTop: Spacing.four },
   handicapInput: {
     height: 54,

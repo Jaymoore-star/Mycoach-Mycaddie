@@ -7,6 +7,8 @@
  * Courses are representative scorecards. Yardages are approximate.
  */
 
+import { normalizeCourses } from "./courseIntegrity";
+
 export type TeeBox = "championship" | "regular" | "forward";
 
 export type BreakDirection =
@@ -77,7 +79,7 @@ function buildHoles(data: HoleInput[]): CourseHole[] {
 
 // ─── Course data ──────────────────────────────────────────────────────────────
 
-export const COURSE_LIBRARY: GolfCourse[] = [
+const RAW_COURSE_LIBRARY: GolfCourse[] = [
   // ── 1. Augusta National (approx replica)
   {
     id: "augusta-national",
@@ -638,6 +640,19 @@ export const COURSE_LIBRARY: GolfCourse[] = [
 ];
 
 // ─── Lookup helpers ───────────────────────────────────────────────────────────
+
+/**
+ * The course library, with detectable data-entry errors repaired.
+ *
+ * See convex/lib/courseIntegrity.ts: six courses allocated duplicate stroke
+ * indices and three had holes whose par contradicted their own yardage.
+ * Repairing at the boundary means every consumer — caddie, scorecard,
+ * handicap — sees self-consistent data.
+ */
+export const COURSE_LIBRARY: GolfCourse[] = normalizeCourses(RAW_COURSE_LIBRARY);
+
+/** Unrepaired data, for the integrity test to assert against. */
+export { RAW_COURSE_LIBRARY };
 
 export function searchCourses(query: string): GolfCourse[] {
   const q = query.toLowerCase().trim();

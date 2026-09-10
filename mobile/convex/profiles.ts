@@ -2,27 +2,7 @@ import { getAuthUserId } from '@convex-dev/auth/server';
 import { ConvexError, v } from 'convex/values';
 
 import { mutation, query } from './_generated/server';
-import { PHASE_ORDER, type Phase } from './lib/curriculum';
-
-/** 6 phases x 15 days = the 90-day program. */
-const PHASE_DAY_START: Record<Phase, number> = {
-  putting: 1,
-  short_game: 16,
-  pitching: 31,
-  mid_irons: 46,
-  hybrids_woods: 61,
-  driver: 76,
-};
-
-export const PROGRAM_DAYS = 90;
-
-function getPhaseForDay(day: number): Phase {
-  let phase = PHASE_ORDER[0];
-  for (const p of PHASE_ORDER) {
-    if (day >= PHASE_DAY_START[p]) phase = p;
-  }
-  return phase;
-}
+import { PROGRAM_DAYS, getPhaseForDay } from './lib/program';
 
 /**
  * Returns the signed-in golfer's profile.

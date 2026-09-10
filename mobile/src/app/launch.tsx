@@ -135,8 +135,8 @@ export default function LaunchScreen() {
         {sessions?.length === 0 && (
           <Card title="No sessions yet">
             <ThemedText variant="body" tone="secondary">
-              Create a session, then add each shot as you hit it. Averages build automatically
-              and feed straight into My Bag.
+              Create a session, then add each shot as you hit it. Carry distances roll up into
+              My Bag automatically.
             </ThemedText>
           </Card>
         )}

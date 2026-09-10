@@ -59,8 +59,8 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 
 ## Resume here
 
-**Last worked: 5 September 2026. Steps 1–7 of 10 complete, all pushed to
-`main` (`32f4927`). Working tree clean.**
+**Last worked: 10 September 2026. Steps 1–7 of 10 complete; every bug found in
+the audit is fixed. `npm run verify` and both bundles pass.**
 
 ### Start the app
 
@@ -111,13 +111,32 @@ fiddly.
 ### Verify before committing
 
 ```bash
-npx tsc --noEmit                        # app
-npx tsc --noEmit -p convex              # backend
+npm run verify                          # typecheck (app + convex), lint, tests
 npx expo export --platform android      # proves Metro can actually bundle it
 ```
 
-The export step matters: `tsc` passing does **not** prove the bundle builds —
-that is how the `node:buffer` problem slipped through.
+The export step is separate on purpose: `tsc` passing does **not** prove the
+bundle builds — that is how the `node:buffer` problem slipped through.
+
+Tests live in `tests/` and cover the pure logic in `convex/lib` (handicap,
+courses, caddie, curriculum) — 201 of them. Convex *functions* are still
+untested; that needs `convex-test` to mock auth and the database.
+
+### Fixed on 10 September 2026
+
+- **Handicap** rewritten to WHS Rule 5.2a in `convex/lib/handicap.ts`. The old
+  table was wrong for records of 10-19 rounds, applied the retired 0.96 USGA
+  multiplier, and skipped the short-record adjustments.
+- **My Bag** now reads `launchShots` as well as `shotLogs`, so Launch Monitor
+  sessions actually reach the bag. The UI claimed this before it was true.
+- **Onboarding** sets the coach from the chosen skill level. Each coach's
+  drills are a single difficulty tier, so a mismatched pair silently delivered
+  the wrong drills; a warning now shows if you override it.
+- **Course data** repaired where self-contradictory (see the launch checklist).
+- **Duplicated constants** (`PHASE_DAY_START`, `PROGRAM_DAYS`, phase labels)
+  collapsed into `convex/lib/program.ts` and the curriculum.
+- **Lint** installed and clean; a `useState` sitting after an early return in
+  `program.tsx` would have crashed on profile load.
 
 ### Bugs fixed here that are still live in the Hercules app
 
@@ -207,7 +226,22 @@ Currently unset. Harmless for native, because the `redirect` callback in
 `convex/auth.ts` allow-lists `mycoach://` and `exp://` explicitly. It becomes
 required if a web build is ever shipped.
 
-### 4. Separate dev and prod OAuth clients
+### 4. Replace the built-in course library with real data
+
+`convex/lib/courses.ts` is plausible placeholder data, not authoritative
+course data. `convex/lib/courseIntegrity.ts` repairs what is detectable —
+duplicate stroke indices and pars that contradict their own yardage — and
+`tests/courses.test.ts` asserts the result is self-consistent.
+
+What it cannot repair is a hole whose par and yardage agree but are both wrong.
+**TPC Sawgrass's 17th is listed as a 368-yard par 4**; it is the ~137-yard
+island-green par 3. Internally consistent, externally false.
+
+Fix by sourcing the library from OpenGolfAPI (`courseCache.ts` in the
+reference already does this) or by correcting the data hole by hole against a
+real scorecard. Until then, treat displayed yardages and pars as approximate.
+
+### 5. Separate dev and prod OAuth clients
 
 Convex production is a different deployment with a different domain, so it
 needs its own Google OAuth client and its own redirect URI. Do not reuse the

@@ -81,8 +81,8 @@ export default function BagScreen() {
         {clubs?.length === 0 && (
           <Card title="No clubs yet">
             <ThemedText variant="body" tone="secondary">
-              Distances build automatically as you log shots. You can also set them by hand
-              below — useful if you already know your numbers.
+              Log a Launch Monitor session and your carry distances appear here automatically.
+              You can also set them by hand below if you already know your numbers.
             </ThemedText>
           </Card>
         )}

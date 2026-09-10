@@ -27,6 +27,8 @@ export type ClubStats = {
   manualCarry?: number;
   manualTotal?: number;
   brand?: string;
+  /** Where the measured distances came from, for the UI to attribute. */
+  sources: { onCourse: number; launchMonitor: number };
 };
 
 async function ownedProfile(ctx: QueryCtx | MutationCtx, profileId: Id<'golferProfiles'>) {
@@ -45,19 +47,39 @@ export const getClubProfile = query({
     const owned = await ownedProfile(ctx, args.profileId);
     if (!owned) return [];
 
-    const shots = await ctx.db
-      .query('shotLogs')
-      .withIndex('by_profile', (q) => q.eq('profileId', args.profileId))
-      .order('desc')
-      .take(500);
+    // Two independent sources of carry data, both counted:
+    //   shotLogs    — shots logged on the course or at practice
+    //   launchShots — launch monitor sessions (Garmin R10 and similar)
+    // The version this was ported from read only shotLogs, so launch monitor
+    // work never reached the bag despite the UI claiming it did.
+    const [onCourseShots, launchShots] = await Promise.all([
+      ctx.db
+        .query('shotLogs')
+        .withIndex('by_profile', (q) => q.eq('profileId', args.profileId))
+        .order('desc')
+        .take(500),
+      ctx.db
+        .query('launchShots')
+        .withIndex('by_profile', (q) => q.eq('profileId', args.profileId))
+        .order('desc')
+        .take(500),
+    ]);
 
     const grouped: Record<string, number[]> = {};
-    for (const shot of shots) {
+    const sources: Record<string, { onCourse: number; launchMonitor: number }> = {};
+
+    const add = (club: string, yards: number, from: 'onCourse' | 'launchMonitor') => {
       // Putter distances are meaningless here, and a zero-yard shot is a
       // mis-log rather than data.
-      if (!shot.club || shot.club === 'Putter') continue;
-      if (shot.actualDistanceYards <= 0) continue;
-      (grouped[shot.club] ??= []).push(shot.actualDistanceYards);
+      if (!club || club === 'Putter' || yards <= 0) return;
+      (grouped[club] ??= []).push(yards);
+      (sources[club] ??= { onCourse: 0, launchMonitor: 0 })[from]++;
+    };
+
+    for (const shot of onCourseShots) add(shot.club, shot.actualDistanceYards, 'onCourse');
+    // carryYards is the comparable figure; totalYards includes roll.
+    for (const shot of launchShots) {
+      if (shot.carryYards != null) add(shot.club, shot.carryYards, 'launchMonitor');
     }
 
     const overrides = owned.profile.clubDistances ?? {};
@@ -102,6 +124,7 @@ export const getClubProfile = query({
         manualCarry: override?.carry,
         manualTotal: override?.total,
         brand: override?.brand,
+        sources: sources[club] ?? { onCourse: 0, launchMonitor: 0 },
       });
     }
 
