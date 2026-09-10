@@ -2,7 +2,7 @@
  * Launch monitor sessions and shots (Garmin R10 and similar).
  *
  * Note on the port: the original checked only that *a* user was signed in for
- * several of these, and `getClubAverages` checked nothing at all — a guessed
+ * several of these, and `getClubAverages` checked nothing at all - a guessed
  * profileId exposed or deleted another golfer's data. Every function here
  * verifies the record belongs to the caller.
  */

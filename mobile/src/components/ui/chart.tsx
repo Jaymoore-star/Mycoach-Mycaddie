@@ -17,7 +17,7 @@ import { ThemedText } from './text';
  *
  * Marks follow the house spec: 2px strokes, >=8px end markers, 4px rounded
  * data-ends anchored to the baseline, a 2px gap between adjacent fills, and a
- * recessive baseline. Labels are selective — first, last and extremes — never
+ * recessive baseline. Labels are selective - first, last and extremes - never
  * a number on every point.
  */
 
@@ -47,7 +47,7 @@ export function Sparkline({
     return (
       <View style={[styles.empty, { height, borderColor: colors.border }]}>
         <ThemedText variant="caption" tone="muted">
-          {values.length === 0 ? 'No data yet' : 'One data point — need two to plot a trend'}
+          {values.length === 0 ? 'No data yet' : 'One data point - need two to plot a trend'}
         </ThemedText>
       </View>
     );
@@ -75,7 +75,7 @@ export function Sparkline({
   return (
     <View style={styles.chartBlock}>
       <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
-        {/* Recessive baseline — no grid, the labels carry the values. */}
+        {/* Recessive baseline - no grid, the labels carry the values. */}
         <Line
           x1={pad}
           y1={H - pad}
@@ -163,7 +163,7 @@ type CalendarHeatProps = {
 /**
  * Activity calendar for the last N days.
  *
- * Sequential by definition — a day is either practised or not — so it uses one
+ * Sequential by definition - a day is either practised or not - so it uses one
  * hue at two steps rather than a rainbow, with today ringed.
  */
 export function CalendarHeat({ activeDates, today, days = 91 }: CalendarHeatProps) {
@@ -224,7 +224,7 @@ export function CalendarHeat({ activeDates, today, days = 91 }: CalendarHeatProp
   );
 }
 
-/** Large single figure — the right form when there is one number to report. */
+/** Large single figure - the right form when there is one number to report. */
 export function HeroStat({
   value,
   label,

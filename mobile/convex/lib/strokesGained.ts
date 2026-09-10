@@ -66,7 +66,7 @@ export interface TargetZone {
   description: string;
   /** Distance to the center of this target zone from the player */
   targetYards: number;
-  /** Effective zone radius — how wide/deep a "hit" counts */
+  /** Effective zone radius - how wide/deep a "hit" counts */
   zoneRadiusYards: number;
   /** 0–1 probability of landing in this zone given conditions */
   successProbability: number;
@@ -111,7 +111,7 @@ function expectedStrokes(distYards: number, skillLevel: SkillLevel): number {
       return s0 + t * (s1 - s0);
     }
   }
-  // Beyond last entry — extrapolate
+  // Beyond last entry - extrapolate
   const last = table[table.length - 1];
   return last[1] + (distYards - last[0]) * 0.008;
 }
@@ -128,7 +128,7 @@ function successProbability(
   conditions: CaddieConditions,
   zoneId: ZoneId,
 ): number {
-  // Base accuracy by skill level — % of shots that finish within 20 yards at 150
+  // Base accuracy by skill level - % of shots that finish within 20 yards at 150
   const baseAccuracy: Record<SkillLevel, number> = {
     tour_pro: 0.82, scratch: 0.68, advanced: 0.55, intermediate: 0.42, beginner: 0.28,
   };
@@ -136,7 +136,7 @@ function successProbability(
   // Accuracy degrades with distance (roughly linearly, worse at longer range)
   const distFactor = Math.max(0.3, 1 - (distToTarget / 250) * 0.45);
 
-  // Zone radius bonus — larger target = higher success
+  // Zone radius bonus - larger target = higher success
   const radiusFactor = Math.min(1.3, 0.7 + (zoneRadius / 25));
 
   // Lie penalty
@@ -151,7 +151,7 @@ function successProbability(
     : conditions.windSpeedMph > 10 ? -0.08
     : -0.03;
 
-  // Tendency miss penalty — aggressive pin shot with bad miss pattern
+  // Tendency miss penalty - aggressive pin shot with bad miss pattern
   const missPenalty = (zoneId === "aggressive" && tendencies.dominantMiss !== null && tendencies.dominantMiss !== "center")
     ? -0.10
     : 0;
@@ -174,7 +174,7 @@ function penaltyProbability(
   successProb: number,
   conditions: CaddieConditions,
 ): number {
-  // Only aggressive and bail-out shots can end in penalties — layup/center are safe
+  // Only aggressive and bail-out shots can end in penalties - layup/center are safe
   const basePenalty: Record<ZoneId, number> = {
     aggressive: 0.25,
     center:     0.05,
@@ -219,35 +219,35 @@ function buildZone(
       radiusYards: 10,
       name: "Attack the Flag",
       emoji: "🎯",
-      description: "Direct at the pin — maximum birdie chance, real penalty risk",
+      description: "Direct at the pin - maximum birdie chance, real penalty risk",
     },
     center: {
       targetOffsetYards: 0,    // same distance, but to center-green (radius is wider)
       radiusYards: 22,
       name: "Center of Green",
       emoji: "🟢",
-      description: "Fat part of the green — safest play, still makeable two-putt",
+      description: "Fat part of the green - safest play, still makeable two-putt",
     },
     bail_out: {
       targetOffsetYards: 5,    // slightly shorter / wider
       radiusYards: 30,
       name: "Bail-Out Zone",
       emoji: "⬅️",
-      description: "Away from trouble — miss to the safe side, accept longer putt",
+      description: "Away from trouble - miss to the safe side, accept longer putt",
     },
     layup: {
       targetOffsetYards: -(distanceToPin - Math.min(distanceToPin - 30, 100)),
       radiusYards: 25,
       name: "Strategic Layup",
       emoji: "📐",
-      description: "Leave a full wedge in — set up a high-percentage scoring shot",
+      description: "Leave a full wedge in - set up a high-percentage scoring shot",
     },
     safe_short: {
       targetOffsetYards: -15,  // 15 yards short of pin
       radiusYards: 28,
       name: "Short of the Flag",
       emoji: "🔒",
-      description: "Land short, release to pin — avoids back trouble",
+      description: "Land short, release to pin - avoids back trouble",
     },
   };
 
@@ -259,7 +259,7 @@ function buildZone(
   const isLayupZone = id === "layup";
   const canReach = distanceToPin <= maxDriver * 1.1;
   if (isLayupZone && canReach && distanceToPin <= 200) {
-    // return a no-op zone — will be filtered out
+    // return a no-op zone - will be filtered out
     return {
       id, name: cfg.name, emoji: cfg.emoji, description: cfg.description,
       targetYards, zoneRadiusYards: zoneRadius,
@@ -370,10 +370,10 @@ export function buildDecisionMatrix(
     const pctPenalty = Math.round(z.penaltyProbability * 100);
 
     const verdicts: Record<ZoneId, string> = {
-      aggressive: pctPenalty > 15 ? "High risk — only go if pin is on" : "Birdie chance — commit fully",
-      center:     "Percentage play — eliminate big numbers",
-      bail_out:   "Smart miss — takes trouble out of play",
-      layup:      "Control the approach — set up a wedge",
+      aggressive: pctPenalty > 15 ? "High risk - only go if pin is on" : "Birdie chance - commit fully",
+      center:     "Percentage play - eliminate big numbers",
+      bail_out:   "Smart miss - takes trouble out of play",
+      layup:      "Control the approach - set up a wedge",
       safe_short: "Eliminate back-flag trouble",
     };
 
@@ -385,11 +385,11 @@ export function buildDecisionMatrix(
   // Key factor driving the recommendation
   const keyFactor = (() => {
     if (conditions.windSpeedMph > 18) return `${conditions.windSpeedMph} mph wind increases miss dispersion`;
-    if (conditions.lie === "bunker" || conditions.lie === "rough") return `${conditions.lie} lie reduces accuracy — play safer zone`;
+    if (conditions.lie === "bunker" || conditions.lie === "rough") return `${conditions.lie} lie reduces accuracy - play safer zone`;
     if (tendencies.dominantMiss && tendencies.dominantMiss !== "center") return `Your ${tendencies.dominantMiss} miss pattern shifts the optimal target`;
-    if (dist > maxDriver * 0.95) return "Distance requires a layup — control the next shot";
-    if (conditions.pinPosition === "front") return "Front pin penalizes being long — short side is safe";
-    if (conditions.greenFirmness === "firm") return "Firm greens mean more rollout — land shorter";
+    if (dist > maxDriver * 0.95) return "Distance requires a layup - control the next shot";
+    if (conditions.pinPosition === "front") return "Front pin penalizes being long - short side is safe";
+    if (conditions.greenFirmness === "firm") return "Firm greens mean more rollout - land shorter";
     return "Balanced conditions favor the percentage play";
   })();
 
@@ -401,14 +401,14 @@ export function buildDecisionMatrix(
     : "on par with field";
 
   const summary = rec.id === "aggressive"
-    ? `Attack the flag — ${Math.round(rec.successProbability * 100)}% chance of a tight result (${sgGainedStr})`
+    ? `Attack the flag - ${Math.round(rec.successProbability * 100)}% chance of a tight result (${sgGainedStr})`
     : rec.id === "center"
-    ? `Center of green is the play — eliminate trouble, two-putt for par (${sgGainedStr})`
+    ? `Center of green is the play - eliminate trouble, two-putt for par (${sgGainedStr})`
     : rec.id === "bail_out"
-    ? `Miss to the safe side — conditions make the aggressive play too costly (${sgGainedStr})`
+    ? `Miss to the safe side - conditions make the aggressive play too costly (${sgGainedStr})`
     : rec.id === "layup"
-    ? `Lay it up — leave yourself a full wedge and attack from there (${sgGainedStr})`
-    : `Land short of the flag — let the ground work for you (${sgGainedStr})`;
+    ? `Lay it up - leave yourself a full wedge and attack from there (${sgGainedStr})`
+    : `Land short of the flag - let the ground work for you (${sgGainedStr})`;
 
   return {
     zones: finalZones,

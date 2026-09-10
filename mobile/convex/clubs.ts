@@ -1,5 +1,5 @@
 /**
- * Club distance profile — aggregates shot history into personal bag distances,
+ * Club distance profile - aggregates shot history into personal bag distances,
  * with manual overrides stored on `golferProfiles.clubDistances`.
  */
 import { getAuthUserId } from '@convex-dev/auth/server';
@@ -14,7 +14,7 @@ export { BAG_ORDER, type ClubName } from './lib/bag';
 export type ClubStats = {
   club: string;
   shotCount: number;
-  /** The number the caddie uses — the override when set, else the measured mean. */
+  /** The number the caddie uses - the override when set, else the measured mean. */
   avgCarry: number;
   /** Measured mean, kept separate so the UI can show both. */
   measuredCarry: number;
@@ -48,8 +48,8 @@ export const getClubProfile = query({
     if (!owned) return [];
 
     // Two independent sources of carry data, both counted:
-    //   shotLogs    — shots logged on the course or at practice
-    //   launchShots — launch monitor sessions (Garmin R10 and similar)
+    //   shotLogs    - shots logged on the course or at practice
+    //   launchShots - launch monitor sessions (Garmin R10 and similar)
     // The version this was ported from read only shotLogs, so launch monitor
     // work never reached the bag despite the UI claiming it did.
     const [onCourseShots, launchShots] = await Promise.all([

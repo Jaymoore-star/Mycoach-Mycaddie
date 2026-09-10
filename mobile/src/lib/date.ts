@@ -1,7 +1,7 @@
 /**
  * The golfer's local calendar date as YYYY-MM-DD.
  *
- * Deliberately not `toISOString().split('T')[0]` — that is always UTC, so a
+ * Deliberately not `toISOString().split('T')[0]` - that is always UTC, so a
  * session practised at 9pm in New York (or 2am in Mumbai) would be filed under
  * the wrong day and corrupt streaks and 30-day stats. Convex functions run in
  * UTC and cannot know the device's timezone, so the client sends this along.

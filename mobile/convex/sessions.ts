@@ -31,7 +31,7 @@ function assertDate(date: string): string {
  * Loads a profile only if it belongs to the signed-in user.
  *
  * profileId arrives from the client, so ownership must be checked on every
- * call — otherwise anyone could read or mutate another golfer's program by
+ * call - otherwise anyone could read or mutate another golfer's program by
  * guessing an id.
  */
 async function ownedProfile(ctx: QueryCtx | MutationCtx, profileId: Id<'golferProfiles'>) {

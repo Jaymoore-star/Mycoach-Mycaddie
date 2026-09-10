@@ -40,7 +40,7 @@ export default function HandicapScreen() {
             <Card>
               {data.handicapIndex === null ? (
                 <>
-                  <HeroStat value="—" label="Handicap index" tone="default" />
+                  <HeroStat value="-" label="Handicap index" tone="default" />
                   <ThemedText variant="body" tone="secondary" style={styles.centered}>
                     WHS needs at least three acceptable scores before it issues an index.
                     {data.scoresNeeded > 0 &&
@@ -138,7 +138,7 @@ export default function HandicapScreen() {
               </ThemedText>
               <ThemedText variant="caption" tone="secondary">
                 Your index is the average of the lowest differentials in your last 20
-                rounds — one of them at 5 rounds, three at 9, up to the best eight at 20.
+                rounds - one of them at 5 rounds, three at 9, up to the best eight at 20.
                 Short records get a downward adjustment. Only 18-hole rounds count.
               </ThemedText>
             </Card>

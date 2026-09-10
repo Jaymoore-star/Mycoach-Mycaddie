@@ -74,7 +74,7 @@ function RootNavigator({ background }: { background: string }) {
   useEffect(() => {
     // Auth resolves asynchronously from SecureStore, and the profile query
     // follows it. Holding the splash until both settle stops a signed-in user
-    // seeing the landing screen — or onboarding — for a frame.
+    // seeing the landing screen - or onboarding - for a frame.
     if (settled) void SplashScreen.hideAsync();
   }, [settled]);
 
@@ -89,7 +89,7 @@ function RootNavigator({ background }: { background: string }) {
         headerShown: false,
         contentStyle: { backgroundColor: background },
         // Without this the back button inherits the previous route's name and
-        // renders the raw group segment — "(tabs)" — as its label.
+        // renders the raw group segment - "(tabs)" - as its label.
         headerBackTitle: 'Back',
       }}>
       <Stack.Protected guard={needsOnboarding}>

@@ -54,7 +54,7 @@ export default function ProgramScreen() {
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // Must sit with the other hooks, above the early return below — a hook
+  // Must sit with the other hooks, above the early return below - a hook
   // after a conditional return changes the hook count between renders.
   const [rushed, setRushed] = useState(false);
 
@@ -118,7 +118,7 @@ export default function ProgramScreen() {
       await completeDrill({ sessionId, drillId: drill.id });
 
       // Warn on the tick that finishes the session, while the golfer is still
-      // looking at the drills — an inline card below the fold gets missed.
+      // looking at the drills - an inline card below the fold gets missed.
       const finishesSession = completed.length + 1 >= daily.drills.length;
       const elapsed = minutesSince(session?._creationTime);
       if (finishesSession && elapsed < daily.estimatedMinutes * 0.25) {
@@ -235,7 +235,7 @@ export default function ProgramScreen() {
             </ThemedText>
             <ThemedText variant="caption" tone="secondary">
               You&apos;ve already completed a program day today. These drills are previewed so you
-              can plan — logging them now wouldn&apos;t count toward advancing, because each day
+              can plan - logging them now wouldn&apos;t count toward advancing, because each day
               needs its own session.
             </ThemedText>
           </Card>
@@ -348,7 +348,7 @@ export default function ProgramScreen() {
             </ThemedText>
             <ThemedText variant="caption" tone="secondary">
               This session is about {daily.estimatedMinutes} minutes of work. Ticking drills you
-              haven&apos;t done only fools the program — your skills test will find the gap.
+              haven&apos;t done only fools the program - your skills test will find the gap.
             </ThemedText>
           </Card>
         )}
@@ -378,7 +378,7 @@ export default function ProgramScreen() {
           {finished
             ? 'You have completed the full 90-day programme.'
             : advancedToday
-              ? 'One program day per calendar day — rest and repetition are what build the swing.'
+              ? 'One program day per calendar day - rest and repetition are what build the swing.'
               : !allDone
                 ? `Complete all ${daily.drills.length} drills to advance.`
                 : 'Nice work. Advance when you are done for the day.'}

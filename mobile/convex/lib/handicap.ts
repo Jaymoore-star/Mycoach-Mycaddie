@@ -7,7 +7,7 @@
  * The version ported from the web app was wrong in three ways, all corrected
  * here:
  *   1. Its "scores to use" table diverged from the standard for every record
- *      size from 10 to 19 rounds — it averaged the best 5 at 12 rounds where
+ *      size from 10 to 19 rounds - it averaged the best 5 at 12 rounds where
  *      WHS uses the best 4.
  *   2. It multiplied the result by 0.96. That is the "bonus for excellence"
  *      from the pre-2020 USGA system; WHS uses a straight average.
@@ -30,7 +30,7 @@ export const MAX_HANDICAP_INDEX = 54.0;
 export const MIN_SCORES_FOR_INDEX = 3;
 
 /**
- * Rule 5.2a — how many of the lowest differentials to average, and what
+ * Rule 5.2a - how many of the lowest differentials to average, and what
  * adjustment to apply, for records of fewer than 20 scores.
  */
 const SCORES_TO_USE: Record<number, { count: number; adjustment: number }> = {
@@ -71,7 +71,7 @@ function toTenth(value: number): number {
 /**
  * Score differential for a single round.
  *
- * The playing conditions calculation (PCC) is not modelled — it needs
+ * The playing conditions calculation (PCC) is not modelled - it needs
  * field-wide scoring data this app does not collect.
  */
 export function scoreDifferential(
@@ -105,7 +105,7 @@ export function handicapIndex(differentials: number[]): number | null {
 }
 
 /**
- * Running index after each round, oldest first — for the trend chart.
+ * Running index after each round, oldest first - for the trend chart.
  *
  * Shares handicapIndex with the headline number, so the chart and the figure
  * can no longer disagree. The original kept two separate tables for these.

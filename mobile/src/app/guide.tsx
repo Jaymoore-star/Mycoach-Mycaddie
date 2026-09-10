@@ -26,7 +26,7 @@ const STEPS = [
     href: '/program' as const,
     body:
       'The 90-Day Program picks your drills from the phase you are in and the coach you chose. Tick each drill as you finish it, then advance the day.',
-    detail: 'One program day per calendar day — the next unlocks at midnight.',
+    detail: 'One program day per calendar day - the next unlocks at midnight.',
   },
   {
     icon: GraduationCap,
@@ -152,14 +152,14 @@ export default function GuideScreen() {
           <Card eyebrow="Honesty" title="Ticking a drill proves nothing">
             <ThemedText variant="caption" tone="secondary">
               Drill checkboxes are self-reported and always will be. What the app can
-              verify is logged shot data and skills-test thresholds — those are measured
+              verify is logged shot data and skills-test thresholds - those are measured
               against your level, and they are what make a handicap real.
             </ThemedText>
           </Card>
 
           <Card eyebrow="Distances" title="Carry, not total">
             <ThemedText variant="caption" tone="secondary">
-              Every club number in the app is a carry distance — where the ball lands, not
+              Every club number in the app is a carry distance - where the ball lands, not
               where it stops rolling. Club selection only works if you use the same
               measure throughout.
             </ThemedText>

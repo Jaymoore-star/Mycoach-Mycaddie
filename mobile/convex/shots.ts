@@ -60,7 +60,7 @@ export const logShot = mutation({
     profileId: v.id('golferProfiles'),
     sessionId: v.optional(v.id('trainingSessions')),
     sessionType: v.union(v.literal('practice'), v.literal('skills_test'), v.literal('round')),
-    /** The golfer's local YYYY-MM-DD — see convex/sessions.ts. */
+    /** The golfer's local YYYY-MM-DD - see convex/sessions.ts. */
     date: v.string(),
     club: v.string(),
     targetDistanceYards: v.number(),

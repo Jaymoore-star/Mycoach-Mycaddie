@@ -194,8 +194,8 @@ export default function CoachScreen() {
 
       <Card eyebrow="Coming next" title="Ask your coach" style={styles.block}>
         <ThemedText variant="caption" tone="secondary">
-          Conversational coaching — describing a miss and getting a fix back in your
-          coach&apos;s voice — needs an OpenAI API key on the deployment. Everything above
+          Conversational coaching - describing a miss and getting a fix back in your
+          coach&apos;s voice - needs an OpenAI API key on the deployment. Everything above
           works without it.
         </ThemedText>
       </Card>

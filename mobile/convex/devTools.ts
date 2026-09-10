@@ -31,7 +31,7 @@ export const resetDailyGate = internalMutation({
         .withIndex('by_profile', (q) => q.eq('profileId', args.profileId))
         .collect();
 
-      // Only the session for the day the golfer is currently on — earlier
+      // Only the session for the day the golfer is currently on - earlier
       // days' practice history is left untouched.
       for (const s of sessions) {
         if (s.date === args.clearSessionsOn && s.day === profile.currentDay) {

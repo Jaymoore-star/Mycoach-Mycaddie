@@ -8,9 +8,9 @@ import { PROGRAM_DAYS, getPhaseForDay } from './lib/program';
  * Returns the signed-in golfer's profile.
  *
  * Three distinct states the UI depends on:
- *   `undefined` — still loading
- *   `null`      — signed in but no profile yet, so send them to onboarding
- *   a document  — ready
+ *   `undefined` - still loading
+ *   `null`      - signed in but no profile yet, so send them to onboarding
+ *   a document  - ready
  */
 export const getMyProfile = query({
   args: {},
@@ -100,7 +100,7 @@ export const updateCoach = mutation({
  * could tap through all 90 days without practising.
  */
 export const advanceProgramDay = mutation({
-  // date is the golfer's local YYYY-MM-DD — see convex/sessions.ts.
+  // date is the golfer's local YYYY-MM-DD - see convex/sessions.ts.
   args: { profileId: v.id('golferProfiles'), date: v.string() },
   handler: async (ctx, args) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(args.date)) {
@@ -137,14 +137,14 @@ export const advanceProgramDay = mutation({
     }
 
     // One advance per calendar day. Without this the whole 90-day program can
-    // be cleared in a single sitting, which makes the programme meaningless —
+    // be cleared in a single sitting, which makes the programme meaningless -
     // muscle memory needs days, not minutes. Enforced server-side so it cannot
     // be bypassed by a modified client.
     if (profile.lastAdvancedDate === args.date) {
       throw new ConvexError({
         message: `Day ${profile.currentDay} is done. Day ${
           profile.currentDay + 1
-        } unlocks tomorrow — rest is part of the programme.`,
+        } unlocks tomorrow - rest is part of the programme.`,
         code: 'RATE_LIMITED',
       });
     }

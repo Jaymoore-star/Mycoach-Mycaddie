@@ -77,7 +77,7 @@ export default function DashboardScreen() {
         <StatTile
           icon={<Target size={18} color={colors.primary} />}
           label="Handicap"
-          value={profile.handicap === undefined ? '—' : profile.handicap.toFixed(1)}
+          value={profile.handicap === undefined ? '-' : profile.handicap.toFixed(1)}
         />
         <StatTile
           icon={<TrendingUp size={18} color={colors.primary} />}
@@ -90,7 +90,7 @@ export default function DashboardScreen() {
         <StatTile
           icon={<TrendingUp size={18} color={colors.primary} />}
           label="Scoring avg"
-          value={profile.scoringAvg === undefined ? '—' : profile.scoringAvg.toFixed(1)}
+          value={profile.scoringAvg === undefined ? '-' : profile.scoringAvg.toFixed(1)}
         />
         <StatTile
           icon={<CalendarDays size={18} color={colors.primary} />}
@@ -103,12 +103,12 @@ export default function DashboardScreen() {
         <StatTile
           icon={<Flame size={18} color={colors.primary} />}
           label="Days trained"
-          value={snapshot ? String(snapshot.completedDays) : '—'}
+          value={snapshot ? String(snapshot.completedDays) : '-'}
         />
         <StatTile
           icon={<Target size={18} color={colors.primary} />}
           label="30-day reps"
-          value={snapshot ? String(snapshot.totalReps) : '—'}
+          value={snapshot ? String(snapshot.totalReps) : '-'}
         />
       </View>
 

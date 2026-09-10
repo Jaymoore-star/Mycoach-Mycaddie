@@ -41,7 +41,7 @@ export default function AnalyticsScreen() {
           <Card title="No complete rounds yet">
             <ThemedText variant="body" tone="secondary">
               Analytics needs full 18-hole rounds. Play one in My Caddie and it appears
-              here — scoring trend, fairways, greens in regulation and putts.
+              here - scoring trend, fairways, greens in regulation and putts.
             </ThemedText>
             <Button
               label="Start a round"
@@ -52,7 +52,7 @@ export default function AnalyticsScreen() {
             {summary.practiceDays > 0 && (
               <ThemedText variant="caption" tone="muted">
                 {summary.practiceDays} practice day
-                {summary.practiceDays === 1 ? '' : 's'} logged so far —
+                {summary.practiceDays === 1 ? '' : 's'} logged so far -
                 that feeds My Streak and the 90-Day Program.
               </ThemedText>
             )}
@@ -63,7 +63,7 @@ export default function AnalyticsScreen() {
           <>
             <Card>
               <HeroStat
-                value={summary.avgScore === null ? '—' : summary.avgScore.toFixed(1)}
+                value={summary.avgScore === null ? '-' : summary.avgScore.toFixed(1)}
                 label="Scoring average"
                 hint={`${summary.roundsPlayed} complete round${
                   summary.roundsPlayed === 1 ? '' : 's'
@@ -109,9 +109,9 @@ export default function AnalyticsScreen() {
                 <ThemedText variant="caption" tone="secondary">
                   {summary.puttsPerRound} putts per round
                   {summary.puttsPerRound > 32
-                    ? ' — the flat stick is where the strokes are.'
+                    ? ' - the flat stick is where the strokes are.'
                     : summary.puttsPerRound < 30
-                      ? ' — strong putting.'
+                      ? ' - strong putting.'
                       : '.'}
                 </ThemedText>
               )}

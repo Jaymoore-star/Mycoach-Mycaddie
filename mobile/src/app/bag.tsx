@@ -69,7 +69,7 @@ export default function BagScreen() {
       <Screen
         eyebrow="Equipment"
         title="My Bag"
-        subtitle="Your real carry distances — these drive every caddie recommendation.">
+        subtitle="Your real carry distances - these drive every caddie recommendation.">
         {clubs === undefined && (
           <Card>
             <ThemedText variant="body" tone="secondary">
@@ -138,7 +138,7 @@ export default function BagScreen() {
                         style={styles.editRow}
                         hitSlop={8}>
                         <ThemedText variant="stat" style={styles.carry}>
-                          {c.avgCarry || '—'}
+                          {c.avgCarry || '-'}
                         </ThemedText>
                         <ThemedText variant="caption" tone="muted">
                           yds
@@ -148,7 +148,7 @@ export default function BagScreen() {
                     )}
                   </View>
 
-                  {/* Measured spread — only meaningful with logged shots. */}
+                  {/* Measured spread - only meaningful with logged shots. */}
                   {c.shotCount > 0 && (
                     <View style={[styles.stats, { borderTopColor: colors.border }]}>
                       <View style={styles.rowBetween}>

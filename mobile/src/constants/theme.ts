@@ -1,5 +1,5 @@
 /**
- * Dominus Golf — MyCoach / MyCaddie design tokens.
+ * Dominus Golf - MyCoach / MyCaddie design tokens.
  *
  * Ported from the web app's `index.css` (OKLCH) to hex for React Native,
  * which has no OKLCH support. Brand is deep charcoal + brushed gold #C5A059.
@@ -7,7 +7,7 @@
 
 import { Platform } from 'react-native';
 
-/** Brushed gold — the single accent colour used across the whole app. */
+/** Brushed gold - the single accent colour used across the whole app. */
 export const GOLD = '#C5A059';
 
 export const Colors = {
@@ -50,7 +50,7 @@ export const Colors = {
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 export type ColorScheme = keyof typeof Colors;
 
-/** Chart series colours — shared across Stats, Analytics and Handicap. */
+/** Chart series colours - shared across Stats, Analytics and Handicap. */
 export const ChartColors = [GOLD, '#4A8FA8', '#5FAE76', '#D9974A', '#8B7BB8'] as const;
 
 /**

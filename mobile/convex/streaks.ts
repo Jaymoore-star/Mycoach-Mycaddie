@@ -52,7 +52,7 @@ export const getStreakData = query({
         .take(400),
     ]);
 
-    // summarizeStreak normalises both shapes — trainingSessions store a plain
+    // summarizeStreak normalises both shapes - trainingSessions store a plain
     // date, roundScores a full ISO timestamp.
     const dates = [...sessions.map((s) => s.date), ...rounds.map((r) => r.date)];
 

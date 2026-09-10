@@ -7,12 +7,12 @@ const url = process.env.EXPO_PUBLIC_CONVEX_URL;
 if (!url) {
   throw new Error(
     'EXPO_PUBLIC_CONVEX_URL is not set. Run `npx convex dev` in the mobile/ ' +
-      'folder — it creates .env.local with the deployment URL.',
+      'folder - it creates .env.local with the deployment URL.',
   );
 }
 
 /**
- * A failed sign-in is an expected outcome, not a defect — the form already
+ * A failed sign-in is an expected outcome, not a defect - the form already
  * tells the user. Convex logs it via console.error, which React Native's
  * LogBox then throws on screen as a red banner in development.
  *

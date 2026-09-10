@@ -5,8 +5,8 @@
  * assets via Metro's `require()`, which only resolves inside the bundler. This
  * mapping is plain data, so the server and the tests can both read it.
  *
- * Each coach's drill set is a single difficulty tier — Que is entirely
- * foundation, Mason development, Sam mastery, Dom elite — so the coach IS the
+ * Each coach's drill set is a single difficulty tier - Que is entirely
+ * foundation, Mason development, Sam mastery, Dom elite - so the coach IS the
  * level. `generateSession` deliberately skips difficulty filtering when a
  * coach is set, which means a mismatched pairing silently delivers the wrong
  * drills. Onboarding uses this map to keep them aligned.

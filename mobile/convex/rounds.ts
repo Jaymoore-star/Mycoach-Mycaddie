@@ -21,7 +21,7 @@ const TEE_VALIDATOR = v.union(
   v.literal('forward'),
 );
 
-/** See convex/sessions.ts — every profileId from a client is ownership-checked. */
+/** See convex/sessions.ts - every profileId from a client is ownership-checked. */
 async function ownedProfile(ctx: QueryCtx | MutationCtx, profileId: Id<'golferProfiles'>) {
   const userId = await getAuthUserId(ctx);
   if (userId === null) return null;
@@ -166,7 +166,7 @@ export const finishRound = mutation({
       await ctx.db.patch(args.roundId, { caddieNotes: args.caddieNotes });
     }
 
-    // Scoring average only moves on full rounds — a 3-hole practice loop
+    // Scoring average only moves on full rounds - a 3-hole practice loop
     // would otherwise drag the number down.
     const profile = await ctx.db.get(round.profileId);
     if (profile && round.holes.length >= 18) {

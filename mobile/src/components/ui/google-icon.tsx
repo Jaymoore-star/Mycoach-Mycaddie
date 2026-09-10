@@ -1,6 +1,6 @@
 import Svg, { Path } from 'react-native-svg';
 
-/** Google's four-colour "G". Brand asset — the colours must not be themed. */
+/** Google's four-colour "G". Brand asset - the colours must not be themed. */
 export function GoogleIcon({ size = 18 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48">

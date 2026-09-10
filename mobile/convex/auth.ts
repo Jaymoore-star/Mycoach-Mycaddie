@@ -17,7 +17,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
      * to a website, so the default same-origin check has to be widened.
      *
      * Allowed: the app's own `mycoach://` scheme, and the `exp://` URLs Expo
-     * Go hands out in development. Anything else is rejected — an open
+     * Go hands out in development. Anything else is rejected - an open
      * redirect here would let a crafted link steal the auth code.
      */
     async redirect({ redirectTo }) {

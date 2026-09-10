@@ -76,7 +76,7 @@ export default function LaunchScreen() {
       <Screen
         eyebrow="Garmin R10 · range sessions"
         title="Launch Monitor"
-        subtitle="Log ball speed, carry, smash factor and spin — the numbers that don't lie.">
+        subtitle="Log ball speed, carry, smash factor and spin - the numbers that don't lie.">
         <Button
           label="New session"
           icon={<Plus size={18} color={colors.primaryText} />}
@@ -113,13 +113,13 @@ export default function LaunchScreen() {
                     {a.club}
                   </ThemedText>
                   <ThemedText variant="caption" tone="secondary" style={styles.col}>
-                    {a.avgCarry ?? '—'}
+                    {a.avgCarry ?? '-'}
                   </ThemedText>
                   <ThemedText variant="caption" tone="secondary" style={styles.col}>
-                    {a.avgBallSpeed ?? '—'}
+                    {a.avgBallSpeed ?? '-'}
                   </ThemedText>
                   <ThemedText variant="caption" tone="secondary" style={styles.col}>
-                    {a.avgSmash ?? '—'}
+                    {a.avgSmash ?? '-'}
                   </ThemedText>
                 </View>
               ))}

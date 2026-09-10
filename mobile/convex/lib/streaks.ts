@@ -2,7 +2,7 @@
  * Practice-streak arithmetic over a set of active dates.
  *
  * Pure so it can be unit tested and shared. Every date here is a local
- * `YYYY-MM-DD` string — never a timestamp. The version this replaced pooled
+ * `YYYY-MM-DD` string - never a timestamp. The version this replaced pooled
  * `trainingSessions.date` (already YYYY-MM-DD) with `roundScores.date` (a full
  * ISO timestamp), so round days never matched session days and the day
  * differences came out fractional, silently breaking every streak.
@@ -42,7 +42,7 @@ export type StreakSummary = {
 /**
  * Streak summary from raw active dates.
  *
- * `today` is the golfer's local date, supplied by the client — Convex runs in
+ * `today` is the golfer's local date, supplied by the client - Convex runs in
  * UTC and cannot know their timezone.
  *
  * A streak stays alive if the last active day was today or yesterday: a golfer

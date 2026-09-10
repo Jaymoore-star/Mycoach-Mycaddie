@@ -34,8 +34,8 @@ import { useTheme } from '@/hooks/use-theme';
 const TOTAL_STEPS = 5;
 
 const WELCOME_FEATURES = [
-  'My Coach — P-Position Feedback',
-  'My Caddie — On-Course System',
+  'My Coach - P-Position Feedback',
+  'My Caddie - On-Course System',
   'Shot & Strokes Gained Tracking',
   'Skills Gates + 3-in-a-Row',
 ];
@@ -118,7 +118,7 @@ export default function OnboardingScreen() {
             </ThemedText>
             <ThemedText variant="body" tone="secondary" style={styles.centered}>
               The MyCoach / MyCaddie system is a {PROGRAM_DAYS}-day mastery program built around the
-              10 P-Positions, the Core 9-to-3 Sequence, and the Clock System Wedge Matrix — the same
+              10 P-Positions, the Core 9-to-3 Sequence, and the Clock System Wedge Matrix - the same
               methodology trusted by elite instructors for decades.
             </ThemedText>
 
@@ -348,7 +348,7 @@ export default function OnboardingScreen() {
             <View style={styles.handicapBlock}>
               <ThemedText variant="label">Current handicap (optional)</ThemedText>
               <ThemedText variant="caption" tone="muted">
-                Leave blank if you don&apos;t have one — it&apos;s calculated from your rounds.
+                Leave blank if you don&apos;t have one - it&apos;s calculated from your rounds.
               </ThemedText>
               <TextInput
                 value={handicap}

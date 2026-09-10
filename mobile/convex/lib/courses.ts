@@ -23,7 +23,7 @@ export type BreakDirection =
 
 export interface GreenData {
   breakDirection: BreakDirection;
-  /** Approximate break in inches per 10 ft of putt — 0 = flat, 6+ = severe */
+  /** Approximate break in inches per 10 ft of putt - 0 = flat, 6+ = severe */
   breakSeverityInches: number;
   /** Short description of the slope for the caddie to read */
   slopeNote: string;
@@ -43,7 +43,7 @@ export interface GolfCourse {
   id: string;
   name: string;
   location: string;
-  /** Feet above sea level — used for altitude yardage correction */
+  /** Feet above sea level - used for altitude yardage correction */
   altitudeFt: number;
   /** Geographic coordinates for live weather lookup */
   lat: number;
@@ -123,7 +123,7 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
     holes: buildHoles([
       [4,  5, 381, 365, 340, "left_to_right",  2, "Opening hole. Green slopes slightly right. Ocean not yet in play.", "right"],
       [5,  7, 502, 485, 460, "downhill",        2, "Downhill second shot. Green wraps around bunker front-left.", "front"],
-      [4, 15, 390, 370, 345, "right_to_left",  3, "Famous cliff approach. Never right — ocean. Green tilts left hard.", "left"],
+      [4, 15, 390, 370, 345, "right_to_left",  3, "Famous cliff approach. Never right - ocean. Green tilts left hard.", "left"],
       [4,  9, 331, 315, 295, "relatively_flat", 1, "Short dogleg right. Green is fairly benign. Great birdie chance.", "none"],
       [3, 11, 195, 178, 150, "left_to_right",  3, "Ocean right. Green falls right. Miss left always.", "right"],
       [5,  1, 516, 498, 468, "right_to_left",  2, "Uphill landing zone then right-to-left green from tee level.", "left"],
@@ -133,7 +133,7 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [4,  6, 436, 420, 395, "right_to_left",  3, "Back nine opener. Big green tilts from right rough toward ocean.", "left"],
       [4, 14, 390, 373, 348, "relatively_flat", 2, "Drivable par 4 for scratch+. Green gentle front-to-back only.", "back"],
       [3, 18, 202, 185, 158, "left_to_right",  4, "Ocean full right. Never go right. Green pushed toward cliff.", "right"],
-      [4, 10, 399, 380, 355, "downhill",        3, "Downhill approach. Green front is false—don't be short.", "false_front"],
+      [4, 10, 399, 380, 355, "downhill",        3, "Downhill approach. Green front is false-don't be short.", "false_front"],
       [5,  8, 573, 551, 524, "left_to_right",  2, "Long par 5. Green wide but runs right toward cliff bank.", "right"],
       [4,  4, 379, 360, 335, "uphill",          2, "Uphill finish. Green elevated. Ball feeds back off platform edges.", "front"],
       [4,  2, 402, 385, 360, "right_to_left",  3, "Cliff alongside. Green slopes toward ocean (left).", "left"],
@@ -160,7 +160,7 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [3, 11, 193, 176, 151, "uphill",          2, "Uphill green. Ball drifts back off top tier.", "front"],
       [4,  3, 432, 414, 390, "relatively_flat", 2, "One of the flatter greens. Bunkers guard front corners.", "none"],
       [4, 13, 219, 200, 175, "left_to_right",  3, "Short par 4. Green slopes right toward water.", "right"],
-      [5,  7, 583, 562, 530, "double_break",   4, "Back nine reachable par 5. Green double-tier — very difficult.", "any"],
+      [5,  7, 583, 562, 530, "double_break",   4, "Back nine reachable par 5. Green double-tier - very difficult.", "any"],
       [4, 17, 424, 407, 385, "right_to_left",  3, "Island green hole (17). Entire perimeter is danger. Center or die.", "any"],
       [5, 11, 548, 526, 500, "left_to_right",  2, "Reachable. Green slopes from left rough toward water right.", "right"],
       [4,  7, 394, 376, 354, "downhill",        3, "Downhill. False front collects everything short.", "false_front"],
@@ -198,8 +198,8 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [4,  7, 465, 448, 422, "relatively_flat", 4, "Hole o' Cross (in). Cauldron bunker a nightmare. Green fairly flat.", "none"],
       [5,  5, 618, 600, 567, "left_to_right",  2, "Long Hole. Classic links par 5. Green sweeps gently right.", "right"],
       [4,  1, 455, 437, 413, "right_to_left",  4, "Cartgate In. Stiff two-shotter. Green breaks toward Eden Estuary.", "left"],
-      [3, 13, 163, 148, 126, "relatively_flat", 1, "Corner of the Dyke. Flat green — rare treat at St Andrews.", "none"],
-      [4, 17, 495, 478, 453, "right_to_left",  3, "Road Hole. Infamous pot bunker. Never above hole — road behind.", "back"],
+      [3, 13, 163, 148, 126, "relatively_flat", 1, "Corner of the Dyke. Flat green - rare treat at St Andrews.", "none"],
+      [4, 17, 495, 478, 453, "right_to_left",  3, "Road Hole. Infamous pot bunker. Never above hole - road behind.", "back"],
       [4, 15, 357, 340, 316, "relatively_flat", 1, "Tom Morris Hole. Wide shared green with 1st. Gentle right-to-left.", "left"],
     ]),
   },
@@ -219,7 +219,7 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [3, 11, 199, 183, 157, "relatively_flat", 2, "Ocean views. Green fairly flat. Don't be long.", "back"],
       [4,  7, 495, 476, 450, "right_to_left",  4, "Stroke-index 7. Long two-shotter. Green severely tilted left.", "left"],
       [4,  1, 452, 434, 410, "left_to_right",  3, "Opener. Green complex slopes right. Bunkers both sides.", "right"],
-      [5,  3, 530, 511, 486, "downhill",        3, "Downhill into ravine. Don't fly green — it's a cliff.", "back"],
+      [5,  3, 530, 511, 486, "downhill",        3, "Downhill into ravine. Don't fly green - it's a cliff.", "back"],
       [4, 13, 453, 435, 411, "right_to_left",  3, "Views of Pacific. Classic fall-left green along canyon.", "left"],
       [4,  9, 439, 421, 398, "uphill",          2, "Uphill into prevailing wind. Green sits elevated. Short is below hole.", "none"],
       [3, 17, 212, 195, 167, "left_to_right",  4, "Difficult par 3 into prevailing westerly. Green slopes hard right.", "right"],
@@ -228,7 +228,7 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [3, 16, 177, 160, 135, "relatively_flat", 1, "One of the flatter greens on course.", "none"],
       [4,  4, 468, 450, 425, "right_to_left",  4, "Demanding. Long and tight. Green pulls hard left.", "left"],
       [5, 18, 570, 550, 524, "double_break",   4, "Finishing hole. Famous double-tier green. Below hole always.", "any"],
-      [4,  6, 438, 420, 396, "left_to_right",  3, "Canyon left. Green slopes away right — don't over-draw.", "right"],
+      [4,  6, 438, 420, 396, "left_to_right",  3, "Canyon left. Green slopes away right - don't over-draw.", "right"],
       [4, 14, 454, 435, 411, "right_to_left",  3, "Consistent left-breaking green with steep back tier.", "left"],
       [4,  2, 406, 388, 364, "relatively_flat", 2, "Fairly forgiving green. Wide and receptive.", "none"],
       [3, 12, 196, 180, 154, "right_to_left",  4, "Long carry over ravine. Green slopes steeply left.", "left"],
@@ -247,12 +247,12 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
     holes: buildHoles([
       [4,  3, 430, 415, 392, "right_to_left",  3, "Green tilts back-right to front-left. Front pin plays tricks.", "left"],
       [4, 13, 389, 374, 350, "left_to_right",  3, "Narrow second shot. Green pushes right.", "right"],
-      [3,  9, 230, 210, 181, "relatively_flat", 2, "Long carry. Green is wide and flat — relief on this beast.", "none"],
+      [3,  9, 230, 210, 181, "relatively_flat", 2, "Long carry. Green is wide and flat - relief on this beast.", "none"],
       [5, 17, 517, 500, 474, "left_to_right",  3, "Birdie chance. Green sweeps right behind bunkers.", "right"],
       [4,  1, 478, 460, 433, "right_to_left",  4, "Stroke-index 1. Brutal opener. Green severe left-tilt.", "left"],
       [5, 11, 667, 642, 612, "downhill",        3, "Longest hole. Green rolls hard downhill front-to-back.", "back"],
       [4,  5, 494, 475, 449, "right_to_left",  4, "Stroke-index 5 for a reason. Another long two-shotter left-breaking.", "left"],
-      [3, 15, 209, 191, 164, "left_to_right",  3, "Bunkers surround. Green tilts right — favor left side.", "right"],
+      [3, 15, 209, 191, 164, "left_to_right",  3, "Bunkers surround. Green tilts right - favor left side.", "right"],
       [4,  7, 418, 401, 378, "relatively_flat", 2, "Shorter hole provides some breathing room. Near-flat green.", "none"],
       [4,  2, 453, 436, 411, "right_to_left",  3, "Second nine opener. Familiar left-breaking Bethpage green.", "left"],
       [4, 16, 435, 418, 394, "left_to_right",  3, "Severely bunkered. Green slopes right. Never miss right.", "right"],
@@ -284,13 +284,13 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [4, 15, 434, 415, 392, "downhill",        3, "Downhill finish. Green releases toward rough back-right.", "back"],
       [3,  9, 199, 181, 155, "left_to_right",  3, "Famous scenic hole. Green falls toward valley right.", "right"],
       [4,  1, 489, 469, 442, "right_to_left",  4, "Stroke-index 1. Long, demanding. Green tilts severely left.", "left"],
-      [4, 13, 461, 441, 416, "uphill",          2, "Uphill approach. Green seated on plateau — runs back.", "back"],
+      [4, 13, 461, 441, 416, "uphill",          2, "Uphill approach. Green seated on plateau - runs back.", "back"],
       [4,  6, 430, 411, 387, "left_to_right",  3, "Gorse-lined. Green slopes right. Bunker collects left misses.", "right"],
       [5, 18, 558, 537, 510, "right_to_left",  3, "Finishing par 5. Grandstand lines left. Green breaks left.", "left"],
       [3, 16, 214, 197, 170, "right_to_left",  3, "Long carry. Green heavily favors left roll.", "left"],
       [4,  2, 458, 439, 415, "relatively_flat", 2, "Generous fairway. Green is forgiving for Erin Hills.", "none"],
-      [4, 10, 447, 428, 403, "left_to_right",  3, "Green slopes away right — favor left of center approach.", "right"],
-      [4, 14, 425, 407, 384, "downhill",        2, "Downhill second. Never get behind this pin — rolls forever.", "back"],
+      [4, 10, 447, 428, 403, "left_to_right",  3, "Green slopes away right - favor left of center approach.", "right"],
+      [4, 14, 425, 407, 384, "downhill",        2, "Downhill second. Never get behind this pin - rolls forever.", "back"],
       [4, 12, 450, 432, 408, "right_to_left",  3, "Consistent left-break throughout.", "left"],
       [5,  8, 596, 575, 547, "left_to_right",  2, "Accessible par 5. Green sweeps right of center.", "right"],
       [3,  4, 223, 204, 176, "relatively_flat", 1, "Flatter green, nice respite. Bunkers left and right.", "none"],
@@ -307,7 +307,7 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
     rating: { championship: 74.0, regular: 72.1, forward: 69.8 },
     slope: { championship: 136, regular: 130, forward: 123 },
     holes: buildHoles([
-      [4,  9, 414, 396, 372, "left_to_right",  2, "Tree-lined. Green slopes gently right — ocean influence.", "right"],
+      [4,  9, 414, 396, 372, "left_to_right",  2, "Tree-lined. Green slopes gently right - ocean influence.", "right"],
       [5, 17, 503, 483, 458, "right_to_left",  1, "Birdie hole. Short par 5. Green rolls left.", "left"],
       [3, 15, 165, 150, 128, "relatively_flat", 2, "Short and charming par 3. Flat green rewards patience.", "none"],
       [4,  3, 454, 436, 411, "right_to_left",  4, "Tree-lined fairway. Green falls toward water left.", "left"],
@@ -317,9 +317,9 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [5,  1, 575, 555, 528, "left_to_right",  2, "Opener. Wide fairway. Green sweeps right gently.", "right"],
       [4, 13, 418, 400, 377, "downhill",        3, "Scenic. Green runs downhill past false front.", "false_front"],
       [4,  4, 452, 434, 410, "right_to_left",  4, "Demanding two-shotter. Green breaks toward tidal creek.", "left"],
-      [4, 14, 372, 355, 332, "left_to_right",  2, "Shorter hole — tempting to attack. Green tilts right.", "right"],
-      [3, 16, 175, 159, 136, "right_to_left",  3, "Water right. Green breaks away from danger — toward left.", "left"],
-      [5, 18, 478, 460, 435, "relatively_flat", 1, "Famous lighthouse finish. Tiny peninsula green — every side is trouble.", "any"],
+      [4, 14, 372, 355, 332, "left_to_right",  2, "Shorter hole - tempting to attack. Green tilts right.", "right"],
+      [3, 16, 175, 159, 136, "right_to_left",  3, "Water right. Green breaks away from danger - toward left.", "left"],
+      [5, 18, 478, 460, 435, "relatively_flat", 1, "Famous lighthouse finish. Tiny peninsula green - every side is trouble.", "any"],
       [4,  6, 420, 403, 380, "right_to_left",  3, "Green falls toward lagoon left.", "left"],
       [3, 10, 197, 180, 155, "left_to_right",  3, "Longer par 3. Green slopes right away from marsh.", "right"],
       [4, 12, 395, 378, 355, "relatively_flat", 2, "Mid-round breather. Flat green, manageable.", "none"],
@@ -350,10 +350,10 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [4,  2, 440, 422, 399, "left_to_right",  3, "Back nine opener. Green slopes right toward bunker collection.", "right"],
       [3, 18, 223, 205, 178, "right_to_left",  4, "Famous island-style par 3 finish. Green severely left-breaking.", "left"],
       [4, 12, 454, 436, 413, "downhill",        3, "Downhill. Green rolls toward lake.", "back"],
-      [5, 16, 551, 531, 503, "double_break",   5, "Dramatic ridge-green. Double break — choose side carefully.", "any"],
+      [5, 16, 551, 531, 503, "double_break",   5, "Dramatic ridge-green. Double break - choose side carefully.", "any"],
       [4, 10, 430, 412, 389, "right_to_left",  3, "Classic links two-shotter. Green tilts toward fescue.", "left"],
       [4, 14, 394, 377, 354, "left_to_right",  2, "Reachable green for scratch. Sweeps gently right.", "right"],
-      [3,  6, 218, 200, 173, "relatively_flat", 2, "Mid-round par 3. Green is fairly flat — enjoyable.", "none"],
+      [3,  6, 218, 200, 173, "relatively_flat", 2, "Mid-round par 3. Green is fairly flat - enjoyable.", "none"],
       [4,  4, 477, 459, 434, "right_to_left",  4, "Demanding mid-round hole. Falls toward lake.", "left"],
       [4,  8, 481, 462, 437, "left_to_right",  3, "Stiff dogleg. Green pushed right toward steep drop.", "right"],
     ]),
@@ -371,7 +371,7 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
     holes: buildHoles([
       [4, 5, 441, 423, 398, "left_to_right",  3, "Green tilts right away from sand trap.", "right"],
       [5, 3, 568, 547, 519, "right_to_left",  2, "Long par 5. Green funnels toward left rough.", "left"],
-      [3,11, 219, 199, 172, "relatively_flat", 1, "Lake right. Flat green — rare relief hole.", "none"],
+      [3,11, 219, 199, 172, "relatively_flat", 1, "Lake right. Flat green - rare relief hole.", "none"],
       [4, 1, 470, 451, 426, "right_to_left",  4, "Long demanding opener. Green breaks hard left.", "left"],
       [4, 7, 408, 391, 368, "left_to_right",  3, "Dogleg left. Green falls right toward lake.", "right"],
       [5,15, 587, 566, 537, "left_to_right",  2, "Reachable par 5. Green sweeps right toward water.", "right"],
@@ -382,7 +382,7 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [5,11, 562, 541, 513, "right_to_left",  2, "Birdie hole. Green funnels left of center.", "left"],
       [3,15, 170, 155, 131, "relatively_flat", 2, "Short par 3. Near-flat surface.", "none"],
       [4, 2, 404, 387, 364, "right_to_left",  3, "Classic Bay Hill two-shotter. Green breaks left.", "left"],
-      [4,18, 441, 424, 399, "downhill",        3, "Finishing hole over lake. Green downhill — don't go long.", "back"],
+      [4,18, 441, 424, 399, "downhill",        3, "Finishing hole over lake. Green downhill - don't go long.", "back"],
       [4, 4, 482, 463, 438, "right_to_left",  4, "Long and demanding. Green tilts severely left.", "left"],
       [4,12, 426, 409, 386, "left_to_right",  3, "Green slopes away right toward hazard.", "right"],
       [5, 8, 571, 551, 523, "left_to_right",  2, "Bombers' hole. Wide green sweeps right.", "right"],
@@ -406,12 +406,12 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [4, 9, 479, 461, 436, "right_to_left",  4, "Stroke-index 9 but it's brutal. Ocean wind makes approach tough.", "left"],
       [4, 3, 455, 437, 413, "left_to_right",  3, "Green pushed by sea right. Bunker collects short left.", "right"],
       [5,11, 563, 541, 514, "left_to_right",  2, "Risk-reward par 5. Green sweeps right toward water.", "right"],
-      [3,17, 229, 210, 183, "right_to_left",  5, "Famous. Ocean left. Green severely tilted left — worst putt on course.", "left"],
+      [3,17, 229, 210, 183, "right_to_left",  5, "Famous. Ocean left. Green severely tilted left - worst putt on course.", "left"],
       [4, 7, 465, 446, 421, "right_to_left",  4, "Long and exposed. Green breaks left toward ocean.", "left"],
       [4,15, 421, 403, 380, "left_to_right",  3, "Green swept right by consistent afternoon breeze.", "right"],
       [4, 6, 455, 437, 412, "right_to_left",  3, "Back nine. Green tilts left consistently.", "left"],
-      [5,16, 579, 558, 530, "double_break",   5, "Wild double-tier — break varies by half. Read carefully.", "any"],
-      [3,10, 215, 197, 170, "left_to_right",  4, "All-or-nothing par 3. Green hard right — bail-out is ocean.", "right"],
+      [5,16, 579, 558, 530, "double_break",   5, "Wild double-tier - break varies by half. Read carefully.", "any"],
+      [3,10, 215, 197, 170, "left_to_right",  4, "All-or-nothing par 3. Green hard right - bail-out is ocean.", "right"],
       [4, 2, 463, 445, 421, "right_to_left",  4, "Strong wind hole. Green severely left-breaking.", "left"],
       [4,14, 425, 407, 384, "downhill",        3, "Downhill approach. Green runs toward dunes.", "back"],
       [4, 8, 444, 426, 402, "left_to_right",  3, "Green opens up from left center.", "right"],
@@ -444,7 +444,7 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [4,11, 534, 514, 488, "left_to_right",  4, "Long, demanding mid-round hole. Green sweeps right.", "right"],
       [3, 7, 199, 182, 157, "relatively_flat", 2, "Near-flat green on par 3.", "none"],
       [5,15, 559, 539, 511, "right_to_left",  2, "Classic Nicklaus par 5. Green breaks left at end.", "left"],
-      [4,18, 444, 426, 402, "downhill",        4, "Grandstand finish. Downhill green — don't go long.", "back"],
+      [4,18, 444, 426, 402, "downhill",        4, "Grandstand finish. Downhill green - don't go long.", "back"],
       [4, 6, 433, 415, 392, "right_to_left",  3, "Wooded backdrop. Green tilts toward creek.", "left"],
       [4,16, 460, 441, 417, "left_to_right",  3, "Back nine two-shotter. Green slopes right.", "right"],
       [4, 2, 403, 385, 362, "right_to_left",  3, "Creek in play from tee. Green breaks toward stream.", "left"],
@@ -469,7 +469,7 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [5, 1, 573, 553, 525, "left_to_right",  2, "Par 5 opener. Long. Green sweeps right.", "right"],
       [3,15, 176, 160, 137, "right_to_left",  3, "Bunker island green. Green tilts hard left.", "left"],
       [4, 9, 415, 397, 374, "downhill",        3, "Downhill. Eucalyptus trees frame approach. Green runs forward.", "false_front"],
-      [4,17, 450, 431, 408, "right_to_left",  4, "Classic Riviera par 4 — severely left-breaking green.", "left"],
+      [4,17, 450, 431, 408, "right_to_left",  4, "Classic Riviera par 4 - severely left-breaking green.", "left"],
       [4,11, 490, 470, 445, "left_to_right",  3, "Another demanding two-shotter. Green falls right.", "right"],
       [4, 2, 468, 449, 425, "right_to_left",  4, "Stroke-index 2. Tight and tough. Green breaks left.", "left"],
       [5,18, 460, 441, 417, "left_to_right",  3, "Drivable par 5 for big hitters. Green slopes right.", "right"],
@@ -478,7 +478,7 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
       [4,14, 415, 397, 374, "left_to_right",  2, "Bunkers left. Green sweeps right toward native rough.", "right"],
       [4, 4, 436, 418, 395, "right_to_left",  3, "Tree-lined. Green breaks toward garden left.", "left"],
       [4,10, 315, 298, 277, "relatively_flat", 1, "Short par 4. Most forgiving green on course.", "none"],
-      [5, 8, 589, 568, 540, "double_break",   4, "Long par 5 — double-tier green is very tricky.", "any"],
+      [5, 8, 589, 568, 540, "double_break",   4, "Long par 5 - double-tier green is very tricky.", "any"],
       [4,12, 396, 379, 356, "left_to_right",  2, "Short two-shotter. Green pushed right.", "right"],
     ]),
   },
@@ -493,18 +493,18 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
     rating: { championship: 78.8, regular: 76.7, forward: 74.1 },
     slope: { championship: 155, regular: 149, forward: 142 },
     holes: buildHoles([
-      [4, 3, 482, 464, 439, "right_to_left",  4, "Church Pew bunkers. Green severely tilted left — fastest on course.", "left"],
+      [4, 3, 482, 464, 439, "right_to_left",  4, "Church Pew bunkers. Green severely tilted left - fastest on course.", "left"],
       [4,11, 343, 326, 304, "left_to_right",  2, "Short but treacherous. Green tilts right toward rough.", "right"],
-      [3,15, 183, 166, 142, "relatively_flat", 1, "Oakmont's flattest green — still very fast.", "none"],
+      [3,15, 183, 166, 142, "relatively_flat", 1, "Oakmont's flattest green - still very fast.", "none"],
       [5, 9, 609, 587, 558, "right_to_left",  2, "Long par 5. Green breaks left on back half.", "left"],
       [4, 1, 485, 466, 441, "left_to_right",  3, "Green tilts right toward rough. Never above this hole.", "right"],
       [4, 5, 389, 371, 348, "right_to_left",  4, "Tiny green. Any miss is brutal. Severe left-tilt.", "left"],
       [3,13, 194, 177, 153, "right_to_left",  3, "All three-spots are dangerous here. Left-tilt green.", "left"],
-      [4, 7, 479, 460, 435, "left_to_right",  3, "Church Pew hole. Green pushed far right — be exact.", "right"],
+      [4, 7, 479, 460, 435, "left_to_right",  3, "Church Pew hole. Green pushed far right - be exact.", "right"],
       [4, 9, 501, 482, 457, "right_to_left",  4, "Closing front nine. Another left-breaking nightmare.", "left"],
       [4, 6, 435, 417, 393, "relatively_flat", 2, "One of the few manageable greens at Oakmont.", "none"],
       [5,17, 667, 645, 616, "double_break",   5, "Longest hole in USGA competition. Double-break green.", "any"],
-      [3, 8, 288, 267, 238, "left_to_right",  4, "Long par 3. Green tilts right — very fast.", "right"],
+      [3, 8, 288, 267, 238, "left_to_right",  4, "Long par 3. Green tilts right - very fast.", "right"],
       [4,18, 484, 465, 440, "right_to_left",  3, "Finishing hole. Green falls back left. Don't be above hole.", "left"],
       [4,16, 440, 422, 398, "left_to_right",  3, "Green consistently slopes right on back nine.", "right"],
       [4, 4, 423, 405, 382, "right_to_left",  3, "Bunker-framed. Green tilts left toward sand complex.", "left"],
@@ -646,8 +646,8 @@ const RAW_COURSE_LIBRARY: GolfCourse[] = [
  *
  * See convex/lib/courseIntegrity.ts: six courses allocated duplicate stroke
  * indices and three had holes whose par contradicted their own yardage.
- * Repairing at the boundary means every consumer — caddie, scorecard,
- * handicap — sees self-consistent data.
+ * Repairing at the boundary means every consumer - caddie, scorecard,
+ * handicap - sees self-consistent data.
  */
 export const COURSE_LIBRARY: GolfCourse[] = normalizeCourses(RAW_COURSE_LIBRARY);
 
@@ -682,11 +682,11 @@ export function describeBreak(green: GreenData): string {
   const dirMap: Record<BreakDirection, string> = {
     left_to_right:     "breaks left to right",
     right_to_left:     "breaks right to left",
-    uphill:            "plays uphill — expect putts to be slower",
-    downhill:          "runs downhill — putts are fast, be cautious coming back",
+    uphill:            "plays uphill - expect putts to be slower",
+    downhill:          "runs downhill - putts are fast, be cautious coming back",
     severe_left:       "breaks severely left",
     severe_right:      "breaks severely right",
-    double_break:      "has a double break — read each putt carefully",
+    double_break:      "has a double break - read each putt carefully",
     relatively_flat:   "is relatively flat with minimal break",
   };
   const sevMap = (sev: number) => {
@@ -696,5 +696,5 @@ export function describeBreak(green: GreenData): string {
     if (sev <= 5) return "significant";
     return "severe";
   };
-  return `${dirMap[green.breakDirection]} (${sevMap(green.breakSeverityInches)} — ~${green.breakSeverityInches}" per 10 ft). ${green.slopeNote}`;
+  return `${dirMap[green.breakDirection]} (${sevMap(green.breakSeverityInches)} - ~${green.breakSeverityInches}" per 10 ft). ${green.slopeNote}`;
 }

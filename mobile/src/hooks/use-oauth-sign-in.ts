@@ -33,7 +33,7 @@ export function useOAuthSignIn(provider: string) {
 
       const result = await WebBrowser.openAuthSessionAsync(redirect.toString(), redirectTo);
       if (result.type !== 'success') {
-        // User dismissed the browser — not an error worth surfacing.
+        // User dismissed the browser - not an error worth surfacing.
         return;
       }
 

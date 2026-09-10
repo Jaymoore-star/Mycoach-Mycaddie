@@ -3,7 +3,7 @@
  *
  * Lives in `lib/` rather than `clubs.ts` because the client imports it. Convex
  * function modules pull in `@convex-dev/auth/server`, which depends on `jose`
- * and `node:buffer` — Metro cannot resolve that, so importing one from React
+ * and `node:buffer` - Metro cannot resolve that, so importing one from React
  * Native breaks the bundle. Only `convex/lib/*` and `_generated/api` are safe
  * to import from app code.
  */

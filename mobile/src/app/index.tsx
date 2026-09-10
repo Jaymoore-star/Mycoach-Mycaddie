@@ -15,7 +15,7 @@ const FEATURES = [
   {
     icon: GraduationCap,
     title: 'My Coach',
-    desc: 'A structured 90-day program with daily drills, coaching cues, and skills gates — calibrated to your handicap level.',
+    desc: 'A structured 90-day program with daily drills, coaching cues, and skills gates - calibrated to your handicap level.',
     accent: GOLD,
   },
   {
@@ -75,7 +75,7 @@ export default function LandingScreen() {
 
           <ThemedText variant="body" tone="secondary" style={styles.tagline}>
             Your personal AI coach with 36 years of top-10 instructor knowledge and an elite
-            on-course caddie — all in one app.
+            on-course caddie - all in one app.
           </ThemedText>
 
           <ThemedText variant="heading" tone="accent" style={styles.promise}>
@@ -107,7 +107,7 @@ export default function LandingScreen() {
           Three tools. One goal.
         </ThemedText>
         <ThemedText variant="body" tone="secondary" style={[styles.centered, styles.sectionBlurb]}>
-          Everything you need to practice smarter, play better, and break 80 — in one app.
+          Everything you need to practice smarter, play better, and break 80 - in one app.
         </ThemedText>
 
         <View style={styles.featureList}>

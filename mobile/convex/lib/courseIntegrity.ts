@@ -4,17 +4,17 @@
  * The library was carried over from the web app and contains data-entry
  * errors. Two kinds are detectable from the data alone and repaired here:
  *
- *   1. Duplicate stroke indices — six courses allocate the same index to two
+ *   1. Duplicate stroke indices - six courses allocate the same index to two
  *      holes and omit another, so the 1-18 allocation is invalid. Stroke
  *      index decides which holes give shots in net play.
- *   2. Par contradicting yardage — a "par 5" of 136 yards, or a "par 3" of
+ *   2. Par contradicting yardage - a "par 5" of 136 yards, or a "par 3" of
  *      427. Par drives score-to-par and the handicap differential; yardage
  *      drives the caddie. A hole that disagrees with itself is wrong either
  *      way, so par is re-derived from the yardage.
  *
  * A third kind CANNOT be repaired from the data: a hole whose par and yardage
  * agree but are both wrong for the real hole. TPC Sawgrass's 17th is listed as
- * a 368-yard par 4 when it is the ~137-yard island-green par 3 — internally
+ * a 368-yard par 4 when it is the ~137-yard island-green par 3 - internally
  * consistent, externally false. Treat this library as plausible placeholder
  * data, not authoritative course data, until it is replaced from a real source.
  */

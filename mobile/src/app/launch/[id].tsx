@@ -48,7 +48,7 @@ export default function LaunchSessionScreen() {
   }
 
   async function handleAdd() {
-    // Empty strings mean "not measured" — send undefined so the average
+    // Empty strings mean "not measured" - send undefined so the average
     // ignores them rather than treating a blank as zero.
     const parsed: Partial<Record<FieldKey, number>> = {};
     for (const f of FIELDS) {
@@ -101,8 +101,8 @@ export default function LaunchSessionScreen() {
         title={session.label ?? 'Range session'}
         subtitle={
           session.shotCount > 0
-            ? `${session.shotCount} shots · ${session.avgCarryYards ?? '—'} yds avg carry · smash ${
-                session.avgSmashFactor ?? '—'
+            ? `${session.shotCount} shots · ${session.avgCarryYards ?? '-'} yds avg carry · smash ${
+                session.avgSmashFactor ?? '-'
               }`
             : 'No shots logged yet.'
         }>
@@ -146,7 +146,7 @@ export default function LaunchSessionScreen() {
                   value={values[f.key] ?? ''}
                   onChangeText={(t) => setField(f.key, t)}
                   keyboardType="decimal-pad"
-                  placeholder="—"
+                  placeholder="-"
                   placeholderTextColor={colors.textMuted}
                   style={[
                     styles.input,

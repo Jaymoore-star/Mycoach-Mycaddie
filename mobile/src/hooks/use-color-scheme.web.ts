@@ -10,7 +10,7 @@ import { useColorScheme as useRNColorScheme } from 'react-native';
  * is no extra render pass and no cascading update.
  */
 
-/** Nothing to subscribe to — hydration happens exactly once. */
+/** Nothing to subscribe to - hydration happens exactly once. */
 const subscribe = () => () => {};
 
 export function useColorScheme() {

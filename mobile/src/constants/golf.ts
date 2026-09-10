@@ -2,11 +2,11 @@ import { PHASES, PHASE_ORDER, type Phase } from '@/convex/lib/curriculum';
 
 /**
  * Golf domain constants, ported from the web app.
- * These mirror the union types in the Convex schema — keep them in sync.
+ * These mirror the union types in the Convex schema - keep them in sync.
  */
 
 // Phase identifiers and metadata come from the curriculum, which the server
-// also uses — one definition, no drift.
+// also uses - one definition, no drift.
 export { PHASES, PHASE_ORDER, type Phase } from '@/convex/lib/curriculum';
 
 // Derived from the curriculum so the label can never differ between screens.
@@ -18,7 +18,7 @@ export const PHASE_LABELS: Record<Phase, string> = Object.fromEntries(
 
 /** Shown on the marketing screen and phase cards. */
 export const PHASE_BLURBS: Record<Phase, string> = {
-  putting: 'Master the flat stick — 40% of all strokes',
+  putting: 'Master the flat stick - 40% of all strokes',
   short_game: 'Up-and-down from anywhere inside 50 yards',
   pitching: 'Dial in your wedges to a yardage',
   mid_irons: 'Find the green from 130–180',
@@ -44,7 +44,7 @@ export const SKILL_LABELS: Record<SkillLevel, string> = {
   tour_pro: 'Tour Pro',
 };
 
-/** Onboarding skill picker — handicap band and blurb per level. */
+/** Onboarding skill picker - handicap band and blurb per level. */
 export const SKILL_OPTIONS: {
   value: SkillLevel;
   label: string;

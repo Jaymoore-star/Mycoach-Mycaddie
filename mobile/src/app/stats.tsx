@@ -58,7 +58,7 @@ export default function StatsScreen() {
         {stats === null && (
           <Card title="No shots logged yet">
             <ThemedText variant="body" tone="secondary">
-              Stats are built from individual shots — the distance you were aiming for
+              Stats are built from individual shots - the distance you were aiming for
               against the distance you actually hit. Log shots during a practice session
               or import a Launch Monitor session to get started.
             </ThemedText>
@@ -75,7 +75,7 @@ export default function StatsScreen() {
           <>
             <Card>
               <HeroStat
-                value={stats.passRate === null ? '—' : `${stats.passRate}%`}
+                value={stats.passRate === null ? '-' : `${stats.passRate}%`}
                 label="Skills-test pass rate"
                 hint={
                   stats.passRate === null
@@ -178,7 +178,7 @@ export default function StatsScreen() {
                                   ? colors.warning
                                   : colors.textMuted,
                           }}>
-                          {s.skillTestResult ? s.skillTestResult.toUpperCase() : '—'}
+                          {s.skillTestResult ? s.skillTestResult.toUpperCase() : '-'}
                         </ThemedText>
                       </View>
                       <ThemedText variant="caption" tone="muted">

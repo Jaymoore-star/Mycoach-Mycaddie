@@ -44,7 +44,7 @@ export default function CaddieScreen() {
 
   const results = useMemo(() => (query.trim() ? searchCourses(query) : COURSE_LIBRARY), [query]);
 
-  // Every round under 18 holes is still open — not just the most recent one.
+  // Every round under 18 holes is still open - not just the most recent one.
   const active = useMemo(() => rounds?.filter((r) => r.holes.length < 18) ?? [], [rounds]);
   const finished = useMemo(() => rounds?.filter((r) => r.holes.length >= 18) ?? [], [rounds]);
 
@@ -76,7 +76,7 @@ export default function CaddieScreen() {
   function handleStart() {
     if (!selected) return;
 
-    // An open round at this same course is that round — resume it rather than
+    // An open round at this same course is that round - resume it rather than
     // asking. The server enforces this too, so the two can't disagree.
     const sameCourse = active.find((r) => r.courseId === selected.id);
     if (sameCourse) {

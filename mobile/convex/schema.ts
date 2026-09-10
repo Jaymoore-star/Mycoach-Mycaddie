@@ -51,7 +51,7 @@ export default defineSchema({
     weeklyGoal: v.optional(v.number()), // target practice sessions per week
     // Hardware state: Tour Pure Training System active vs. standard clubs
     tourPureActive: v.optional(v.boolean()),
-    // Personal club distance profile — overrides generic defaults in caddie
+    // Personal club distance profile - overrides generic defaults in caddie
     clubDistances: v.optional(
       v.record(
         v.string(),
@@ -320,7 +320,7 @@ export default defineSchema({
     .index('by_session', ['sessionId'])
     .index('by_profile', ['profileId']),
 
-  // Cached course data fetched from OpenGolfAPI — keyed by external course ID
+  // Cached course data fetched from OpenGolfAPI - keyed by external course ID
   courseCache: defineTable({
     externalId: v.string(), // OpenGolfAPI course id
     name: v.string(),

@@ -1,5 +1,5 @@
 /**
- * AI Caddie engine — pure rule-based logic, no LLM needed.
+ * AI Caddie engine - pure rule-based logic, no LLM needed.
  * Derives club recommendations, yardage adjustments, course management advice,
  * and pre-shot reminders from player tendencies + conditions.
  */
@@ -138,7 +138,7 @@ function elevationAdjustment(elevation: number): number {
 }
 
 function temperatureAdjustment(temp: number): number {
-  // Cold air is denser — ~1 yard per 10°F below 70°F
+  // Cold air is denser - ~1 yard per 10°F below 70°F
   const baseline = 70;
   const diff = temp - baseline;
   return Math.round(diff * 0.1);
@@ -158,7 +158,7 @@ function lieAdjustment(lie: CaddieConditions["lie"]): number {
 }
 
 function pinAdjustment(pinPosition: CaddieConditions["pinPosition"], greenFirmness: CaddieConditions["greenFirmness"]): number {
-  // On firm greens, aim shorter — on soft greens, fly it pin-high or longer
+  // On firm greens, aim shorter - on soft greens, fly it pin-high or longer
   const firmBonus = { soft: 5, medium: 0, firm: -5 }[greenFirmness];
   const pinAdj = { front: -8, middle: 0, back: 8 }[pinPosition];
   return firmBonus + pinAdj;
@@ -215,7 +215,7 @@ function recommendShape(
   pin: CaddieConditions["pinPosition"],
   skillLevel: SkillLevel,
 ): "draw" | "fade" | "straight" {
-  // Beginners and intermediates should play straight — they can't reliably shape shots
+  // Beginners and intermediates should play straight - they can't reliably shape shots
   if (skillLevel === "beginner" || skillLevel === "intermediate") return "straight";
   if (lie === "rough" || lie === "bunker") return "straight"; // keep it simple from trouble
   return tendencies.favoriteShape ?? "straight";
@@ -241,41 +241,41 @@ function preShotCues(skillLevel: SkillLevel, lie: CaddieConditions["lie"]): stri
     beginner: [
       "P1 setup: 50/50 weight, neutral V-grip pointing to trail shoulder, 4/10 grip pressure",
       "Pick a blade of grass as your intermediate target on the 9-to-3 line",
-      "Apply the 30-Second Reset Rule — one breath, see the landing zone, commit",
+      "Apply the 30-Second Reset Rule - one breath, see the landing zone, commit",
       "Lower body stays passive on short shots; pendulum shoulder stroke only",
     ],
     intermediate: [
-      "P1 address: 50/50 weight, V-grip to trail shoulder, 4/10 pressure — every time",
+      "P1 address: 50/50 weight, V-grip to trail shoulder, 4/10 pressure - every time",
       "Visualize the full P3–P9 sequence from behind the ball",
       "30-Second Reset: read, visualize, trigger, execute",
-      "Lower-body hip bump initiates the downswing — hands follow into the inside slot",
+      "Lower-body hip bump initiates the downswing - hands follow into the inside slot",
     ],
     advanced: [
-      "Build P1 around your clubface first — face to target, then body alignment",
-      "Feel the 9-to-3 Sequence in your practice swing — P3 takeaway, P6 shaft, P9 finish",
+      "Build P1 around your clubface first - face to target, then body alignment",
+      "Feel the 9-to-3 Sequence in your practice swing - P3 takeaway, P6 shaft, P9 finish",
       "30-Second Reset: Three-View read, P1 address, hip bump trigger, commit fully",
       "P7 impact thought: 70/30 weight shift complete, hands ahead of the face",
     ],
     scratch: [
-      "P1 alignment locked — one practice swing to rehearse the P3–P9 shape",
+      "P1 alignment locked - one practice swing to rehearse the P3–P9 shape",
       "Identify your intermediate target 2 feet ahead on your P1 line",
       "30-Second Reset: read done, P1 step-in, one trigger word, execute",
       "P7 position: hip bump and weight shift are complete before the hands arrive",
     ],
     tour_pro: [
-      "P1 confirmed — V-grip 4/10, 50/50, face first",
-      "9-to-3 Sequence is automatic — feel the inside slot drop at transition",
+      "P1 confirmed - V-grip 4/10, 50/50, face first",
+      "9-to-3 Sequence is automatic - feel the inside slot drop at transition",
       "30-Second Reset trigger: one word, see P7, execute",
-      "P10 full finish — no abbreviating the follow-through",
+      "P10 full finish - no abbreviating the follow-through",
     ],
   };
 
   const lieCues: Partial<Record<CaddieConditions["lie"], string>> = {
-    rough:     "Grip down slightly — rough grabs the hosel. Steeper P3 entry, more lower-body drive through P7.",
-    bunker:    "Open face at P1, open stance. P3 entry 2 inches behind the ball — splash the sand, not the ball.",
-    downslope: "Take one extra club. P1: weight forward, ball back. Ball will fly lower through P7 — it's correct.",
-    upslope:   "Take one less club. P1: match spine to slope. Ball launches higher — let the slope do the work.",
-    hardpan:   "Hands ahead at P1, steep P3 descent. This requires perfect P3–P7 ball-first contact — no margin.",
+    rough:     "Grip down slightly - rough grabs the hosel. Steeper P3 entry, more lower-body drive through P7.",
+    bunker:    "Open face at P1, open stance. P3 entry 2 inches behind the ball - splash the sand, not the ball.",
+    downslope: "Take one extra club. P1: weight forward, ball back. Ball will fly lower through P7 - it's correct.",
+    upslope:   "Take one less club. P1: match spine to slope. Ball launches higher - let the slope do the work.",
+    hardpan:   "Hands ahead at P1, steep P3 descent. This requires perfect P3–P7 ball-first contact - no margin.",
     sidehill:  "Ball above feet: P1 aim right of target. Ball below feet: P1 aim left of target.",
   };
 
@@ -297,17 +297,17 @@ function courseManagementNote(
   const { dominantMiss, avgMissYards } = tendencies;
 
   if (adjustedYards > (CLUB_DISTANCES[skillLevel]["Driver"] ?? 0)) {
-    return "This is a lay-up situation. Don't try to get there in one — give yourself a comfortable full shot in.";
+    return "This is a lay-up situation. Don't try to get there in one - give yourself a comfortable full shot in.";
   }
 
   if (conditions.lie === "bunker" || conditions.lie === "rough") {
     return "From this lie, your priority is clean contact and advancing the ball. Take your medicine.";
   }
 
-  // Beginners and intermediates: keep advice simple — no shape or miss-pattern management
+  // Beginners and intermediates: keep advice simple - no shape or miss-pattern management
   if (skillLevel === "beginner" || skillLevel === "intermediate") {
     const tipsByLevel: Record<SkillLevel, string> = {
-      beginner:     "Keep it simple — aim for the middle of the green. Bogey from the center beats double from the edges.",
+      beginner:     "Keep it simple - aim for the middle of the green. Bogey from the center beats double from the edges.",
       intermediate: "Avoid the big number. The center of the green is always correct golf.",
       advanced:     "Play to your miss. Favor the side with more green and bail-out room.",
       scratch:      "Attack the pin when conditions allow. When in doubt, play the correct side.",
@@ -328,7 +328,7 @@ function courseManagementNote(
   }
 
   const tipsByLevel: Record<SkillLevel, string> = {
-    beginner:     "Keep it simple — aim for the middle of the green. Bogey from the center beats double from the edges.",
+    beginner:     "Keep it simple - aim for the middle of the green. Bogey from the center beats double from the edges.",
     intermediate: "Avoid the big number. The center of the green is always correct golf.",
     advanced:     "Play to your miss. Favor the side with more green and bail-out room.",
     scratch:      "Attack the pin when conditions allow. When in doubt, play the correct side.",
@@ -344,7 +344,7 @@ function layupRecommendation(
   skillLevel: SkillLevel,
 ): string | null {
   const maxFullShot = CLUB_DISTANCES[skillLevel]["Driver"] ?? 200;
-  if (distanceToPin <= maxFullShot * 1.15) return null; // reachable — no layup
+  if (distanceToPin <= maxFullShot * 1.15) return null; // reachable - no layup
 
   const optimalIn: Record<SkillLevel, number> = {
     beginner:     80,
@@ -362,14 +362,14 @@ function layupRecommendation(
 
 function greenReading(pin: CaddieConditions["pinPosition"], firmness: CaddieConditions["greenFirmness"]): string {
   const firmMap = {
-    soft:   "Soft greens today — the ball will stop quickly. Fly it to the pin. Don't worry about rollout.",
-    medium: "Normal conditions — plan for 3–5 yards of rollout past your landing spot.",
-    firm:   "Firm greens — plan for 8–12 yards of rollout. Land the ball short and let it chase to the flag.",
+    soft:   "Soft greens today - the ball will stop quickly. Fly it to the pin. Don't worry about rollout.",
+    medium: "Normal conditions - plan for 3–5 yards of rollout past your landing spot.",
+    firm:   "Firm greens - plan for 8–12 yards of rollout. Land the ball short and let it chase to the flag.",
   };
   const pinMap = {
-    front:  "Pin is at the front. Err on the side of short — going long gives you no angle.",
-    middle: "Pin is middle — you have room on both sides. Play for the center of the green.",
-    back:   "Pin is at the back. You have the whole green in front of you — be aggressive.",
+    front:  "Pin is at the front. Err on the side of short - going long gives you no angle.",
+    middle: "Pin is middle - you have room on both sides. Play for the center of the green.",
+    back:   "Pin is at the back. You have the whole green in front of you - be aggressive.",
   };
   return `${firmMap[firmness]} ${pinMap[pin]}`;
 }
@@ -377,9 +377,9 @@ function greenReading(pin: CaddieConditions["pinPosition"], firmness: CaddieCond
 // ─── Pace note ────────────────────────────────────────────────────────────────
 
 function paceNote(windSpeedMph: number, lie: CaddieConditions["lie"]): string {
-  if (windSpeedMph > 20) return "Wind is significant today. Slow your tempo down 10% — you'll make better contact.";
+  if (windSpeedMph > 20) return "Wind is significant today. Slow your tempo down 10% - you'll make better contact.";
   if (lie === "rough") return "From rough, focus on acceleration through the ball. Don't quit on it.";
-  if (lie === "bunker") return "Smooth tempo in the sand. This shot needs a full follow-through — commit!";
+  if (lie === "bunker") return "Smooth tempo in the sand. This shot needs a full follow-through - commit!";
   return "Normal tempo. Trust the yardage and the club in your hand.";
 }
 
@@ -388,13 +388,13 @@ function paceNote(windSpeedMph: number, lie: CaddieConditions["lie"]): string {
 function caddieQuip(name: string, skillLevel: SkillLevel, primaryClub: string): string {
   const quips: Record<SkillLevel, string[]> = {
     beginner: [
-      `${name}, this is your number. Swing your swing — not someone else's.`,
+      `${name}, this is your number. Swing your swing - not someone else's.`,
       `One shot at a time, ${name}. Forget the last hole.`,
       `${name}, commit to this ${primaryClub} and let it go. I've got your yardage right.`,
     ],
     intermediate: [
       `${name}, the ${primaryClub} is perfect here. I like this number.`,
-      `Trust the process, ${name}. The data says ${primaryClub} — go get it.`,
+      `Trust the process, ${name}. The data says ${primaryClub} - go get it.`,
       `${name}, your tempo was great last hole. Bring that same feel.`,
     ],
     advanced: [
@@ -452,7 +452,7 @@ export function buildCaddieRecommendation(
   const pinAdj = pinAdjustment(conditions.pinPosition, conditions.greenFirmness);
   if (pinAdj !== 0) adjustments.push({ reason: `${conditions.pinPosition} pin, ${conditions.greenFirmness} green`, yards: pinAdj });
 
-  // Tendency miss — add buffer
+  // Tendency miss - add buffer
   if (tendencies.dominantMiss === "short" && tendencies.avgMissYards > 5) {
     adjustments.push({ reason: "Your data: tends short", yards: -Math.round(tendencies.avgMissYards * 0.5) });
   }
@@ -468,22 +468,22 @@ export function buildCaddieRecommendation(
     const isSimple = skillLevel === "beginner" || skillLevel === "intermediate";
     // ── Tee shot with driver / woods → fairway language ──────────────────────
     if (conditions.lie === "tee") {
-      if (isSimple) return "Aim at the center of the fairway — make solid contact and keep it in play";
+      if (isSimple) return "Aim at the center of the fairway - make solid contact and keep it in play";
       const miss = tendencies.dominantMiss;
       if (miss === "right") return `Aim at the left edge of the fairway to play your natural miss`;
       if (miss === "left") return `Aim at the right edge of the fairway to play your natural miss`;
-      if (shape === "draw") return `Aim right-center of the fairway — play the draw in from the right`;
-      if (shape === "fade") return `Aim left-center of the fairway — play the fade in from the left`;
+      if (shape === "draw") return `Aim right-center of the fairway - play the draw in from the right`;
+      if (shape === "fade") return `Aim left-center of the fairway - play the fade in from the left`;
       return "Aim at the center of the fairway";
     }
     // ── Approach / layup shots ────────────────────────────────────────────────
-    if (isSimple) return "Aim at the center of the green — make clean contact and give yourself a putt";
+    if (isSimple) return "Aim at the center of the green - make clean contact and give yourself a putt";
     const miss = tendencies.dominantMiss;
     const miss_yds = Math.round(tendencies.avgMissYards);
     if (miss === "right") return `Aim ${miss_yds} yards left of pin to play your natural miss`;
     if (miss === "left") return `Aim ${miss_yds} yards right of pin to play your natural miss`;
-    if (shape === "draw") return `Aim 5 yards right of pin — play the draw in`;
-    if (shape === "fade") return `Aim 5 yards left of pin — play the fade in`;
+    if (shape === "draw") return `Aim 5 yards right of pin - play the draw in`;
+    if (shape === "fade") return `Aim 5 yards left of pin - play the fade in`;
     return "Aim at the middle of the green";
   })();
 
@@ -492,15 +492,15 @@ export function buildCaddieRecommendation(
     if (conditions.lie === "tee") {
       if (primary === "Driver") {
         return conditions.windDirection === "headwind"
-          ? "Drive to the fairway — wind is into you, take a smooth 85% swing to keep it in play"
-          : "Drive to the fairway — favor the widest part and keep it away from the trouble side";
+          ? "Drive to the fairway - wind is into you, take a smooth 85% swing to keep it in play"
+          : "Drive to the fairway - favor the widest part and keep it away from the trouble side";
       }
       // 3-wood / hybrid off tee → lay-up language
-      return `Land in the short grass at ${Math.round(adjustedYardage)} yards — ideal position for your next shot`;
+      return `Land in the short grass at ${Math.round(adjustedYardage)} yards - ideal position for your next shot`;
     }
     // ── Approach ──────────────────────────────────────────────────────────────
     if (conditions.greenFirmness === "firm") return "Land 10 yards short of the flag and release";
-    if (conditions.pinPosition === "back") return "Fly it to the flag — green is open from the front";
+    if (conditions.pinPosition === "back") return "Fly it to the flag - green is open from the front";
     if (conditions.pinPosition === "front") return "Land on the front edge and stop it there";
     return "Carry to the center of the green, let it release";
   })();
@@ -519,7 +519,7 @@ export function buildCaddieRecommendation(
     courseManagementNote: courseManagementNote(adjustedYardage, skillLevel, tendencies, conditions),
     layupRecommendation: layupRecommendation(conditions.distanceToPin, skillLevel),
     greenReading: conditions.lie === "tee"
-      ? "Tee shot — focus on the fairway, not the flag. Find the short grass before thinking about the green."
+      ? "Tee shot - focus on the fairway, not the flag. Find the short grass before thinking about the green."
       : greenReading(conditions.pinPosition, conditions.greenFirmness),
     paceNote: paceNote(conditions.windSpeedMph, conditions.lie),
     caddieQuip: caddieQuip(playerName, skillLevel, primary),

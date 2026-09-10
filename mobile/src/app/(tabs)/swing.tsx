@@ -220,8 +220,8 @@ export default function SwingScreen() {
 
       <Card eyebrow="Coming next" title="Automatic swing analysis" style={styles.block}>
         <ThemedText variant="caption" tone="secondary">
-          Frame-by-frame AI feedback — strengths, fixes and drills against the
-          P-position checkpoints — needs an OpenAI API key on the Convex deployment.
+          Frame-by-frame AI feedback - strengths, fixes and drills against the
+          P-position checkpoints - needs an OpenAI API key on the Convex deployment.
           Recording, storing and reviewing your library all work without it.
         </ThemedText>
       </Card>

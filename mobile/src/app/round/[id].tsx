@@ -430,7 +430,7 @@ export default function RoundScreen() {
               </View>
               <View style={styles.alt}>
                 <ThemedText variant="label" tone="accent">
-                  {recommendation.alternateClub ?? '—'}
+                  {recommendation.alternateClub ?? '-'}
                 </ThemedText>
                 <ThemedText variant="caption" tone="muted" uppercase>
                   Alternate

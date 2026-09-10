@@ -6,7 +6,7 @@
  * the server would have advanced a golfer into a different phase than the
  * screen displayed.
  *
- * Lives in `lib/` because the client imports it — see convex/lib/bag.ts for
+ * Lives in `lib/` because the client imports it - see convex/lib/bag.ts for
  * why client code must never import a Convex function module.
  */
 import { PHASE_ORDER, type Phase } from './curriculum';
