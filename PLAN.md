@@ -59,41 +59,62 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 
 ## Resume here
 
-**Last worked: 10 September 2026. Steps 1–7 of 10 complete; every bug found in
-the audit is fixed. `npm run verify` and both bundles pass.**
+**Last worked: 10 September 2026. Steps 1-8 complete plus skills tests; all
+pushed to `main` (`c18bbb8`). Working tree clean. 233 tests pass, lint is
+clean, and both platform bundles build.**
 
 ### Start the app
 
 ```bash
 cd mobile
-npx convex dev                 # terminal 1 — backend watcher
-npx expo start --tunnel        # terminal 2 — must use --tunnel on this Wi-Fi
+npx convex dev                 # terminal 1 - backend watcher
+npx expo start --tunnel        # terminal 2 - must use --tunnel on this Wi-Fi
 ```
 
 `--tunnel` is not optional on the "LQ Admin" network: it runs AP client
 isolation, so the phone cannot reach Metro over the LAN. If port 8081 is busy,
-an old Metro is still running — `Ctrl+C` it first.
+an old Metro is still running - `Ctrl+C` it first.
+
+### Working agreement
+
+**Do not commit or push without being asked.** Build, verify, report, and leave
+the working tree for review. Verification still runs every time.
+
+### What is built
+
+Every screen exists and no placeholder text remains anywhere in the app:
+
+Landing, sign-in, onboarding, Home, 90-Day Program, Skills Test, My Caddie and
+the round scorecard, My Coach, My Swing, Profile, My Stats, My Bag, My
+Handicap, My Analytics, My Streak, Launch Monitor, How to Use.
+
+Backend: `profiles`, `sessions`, `rounds`, `clubs`, `launchMonitor`, `shots`,
+`skillTests`, `streaks`, `analytics`, `swingVideos`, `auth`, plus `devTools`
+(internal only). Shared pure logic in `convex/lib`: `curriculum`, `caddie`,
+`courses`, `courseIntegrity`, `handicap`, `streaks`, `skillTests`,
+`shotInsight`, `strokesGained`, `program`, `bag`, `coachLevels`.
 
 ### Next up
 
-Every screen is built. No placeholders remain in the app. What's left:
-
-1. **OpenAI API key** — unblocks the two "coming next" cards: conversational
-   coaching on My Coach, and automatic swing analysis on My Swing. Set it with
+1. **OpenAI API key** - the only thing blocking feature-completeness. It
+   unblocks the two "coming next" cards: conversational coaching on My Coach,
+   and automatic swing analysis on My Swing. Set it with
    `npx convex env set OPENAI_API_KEY ...`, then port `analyzeSwing` from
    `reference/convex/swingVideos.ts` and the coach chat from
    `reference/src/pages/coach/page.tsx`.
-2. **Skills tests** — `reference/convex/skillTests.ts` and
-   `reference/convex/lib/skillTests.ts` are not ported. The phase gates in the
-   90-Day Program currently rely on drill completion alone.
-3. **Step 10, the 3D swing visualiser** — `@react-three/fiber` on `expo-gl`.
+2. **Step 10, the 3D swing visualiser** - `@react-three/fiber` on `expo-gl`.
    Highest risk, lowest value; everything ships without it.
-4. **Real course data** — see the launch checklist.
-5. **Convex function tests** — `convex-test` to mock auth and the database.
-   The pure logic in `convex/lib` is covered (219 tests); the functions are not.
+3. **Real course data** - see the launch checklist.
+4. **Convex function tests** - `convex-test` to mock auth and the database.
+   The pure logic in `convex/lib` is covered (233 tests); the functions are not.
+5. **Voice features** - `reference/convex/voice.ts`, `voiceToken.ts` and
+   `launchMonitorVoice.ts` are unported. The web app had a voice-driven
+   on-course caddie. Needs the OpenAI key too.
+6. **Custom courses** - the `customCourses` table and schema exist but there is
+   no UI, so only the 18 built-in courses are selectable.
 
 Charts are drawn with `react-native-svg` in `src/components/ui/chart.tsx`
-(`Sparkline`, `BarRow`, `CalendarHeat`, `HeroStat`) — single-series, one hue,
+(`Sparkline`, `BarRow`, `CalendarHeat`, `HeroStat`) - single series, one hue,
 direct labels. No chart library was needed.
 
 ### Rules that must not be broken
