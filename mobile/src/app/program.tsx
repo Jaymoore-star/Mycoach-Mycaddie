@@ -1,10 +1,11 @@
 import { useMutation, useQuery } from 'convex/react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import {
   ArrowRight,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Circle,
   Clock,
   Lock,
@@ -37,6 +38,7 @@ function minutesSince(creationTime: number | undefined): number {
 
 export default function ProgramScreen() {
   const colors = useTheme();
+  const router = useRouter();
   const profile = useQuery(api.profiles.getMyProfile, {});
 
   // Recomputed per render; the golfer's device knows its own timezone.
@@ -341,6 +343,20 @@ export default function ProgramScreen() {
           </ThemedText>
         </Card>
 
+        <Card
+          eyebrow="Prove it"
+          title="Take the skills test"
+          onPress={() => router.push('/skills-test')}
+          style={styles.block}>
+          <View style={styles.rowBetween}>
+            <ThemedText variant="caption" tone="secondary">
+              Measured challenges with a pass mark set by your level - the honest check
+              on whether the drills are working.
+            </ThemedText>
+            <ChevronRight size={16} color={colors.primary} />
+          </View>
+        </Card>
+
         {rushed && (
           <Card style={[styles.nudge, { borderColor: colors.warning }]}>
             <ThemedText variant="label" style={{ color: colors.warning }}>
@@ -436,6 +452,7 @@ const styles = StyleSheet.create({
 
   advance: { marginTop: Spacing.four },
   hint: { textAlign: 'center', marginTop: Spacing.two },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   nudge: { marginTop: Spacing.six, borderWidth: 1, gap: Spacing.one },
   notice: { marginBottom: Spacing.two, borderWidth: 1, gap: Spacing.one },
   lockedCheck: { opacity: 0.35 },

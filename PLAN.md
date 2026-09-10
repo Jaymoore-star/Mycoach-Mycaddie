@@ -165,6 +165,7 @@ Worth fixing there too if anyone is using it:
 - [x] 8. Stats / Analytics / Handicap / Streak — **done**, plus Guide and My Coach
 - [~] 9. Swing video — **capture, library and storage done**; AI analysis needs an
   OpenAI API key on the deployment
+- [x] Skills tests - **done**, graded server-side against each level's bar
 - [ ] 10. 3D swing visualiser (`three.js` → `expo-gl`) — deferred, highest risk
 
 ## Known port challenges

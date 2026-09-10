@@ -11,6 +11,7 @@ import {
   LogOut,
   Radio,
   Target,
+  Trophy,
 } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
@@ -21,7 +22,7 @@ import { ThemedText } from '@/components/ui/text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-/** The eight screens that don't get a bottom-tab slot. */
+/** The secondary screens that don't get a bottom-tab slot. */
 const LINKS = [
   { href: '/stats', label: 'My Stats', icon: BarChart2 },
   { href: '/bag', label: 'My Bag', icon: Briefcase },
@@ -29,6 +30,7 @@ const LINKS = [
   { href: '/analytics', label: 'My Analytics', icon: LineChart },
   { href: '/streak', label: 'My Streak', icon: Flame },
   { href: '/program', label: '90-Day Program', icon: CalendarDays },
+  { href: '/skills-test', label: 'Skills Test', icon: Trophy },
   { href: '/launch', label: 'Launch Monitor', icon: Radio },
   { href: '/guide', label: 'How to Use', icon: BookOpen },
 ] as const;
