@@ -1,5 +1,13 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Spacing } from '@/constants/theme';
@@ -71,18 +79,30 @@ export function Screen({
   }
 
   return (
-    <ScrollView
-      style={[styles.root, { backgroundColor: colors.background }]}
-      contentContainerStyle={[padding, styles.scrollContent, contentStyle]}
-      keyboardShouldPersistTaps="handled">
-      {body}
-    </ScrollView>
+    // Handled here rather than per screen so no text input can end up hidden
+    // behind the keyboard. `automaticallyAdjustKeyboardInsets` grows the scroll
+    // inset on iOS and brings the focused field into view; KeyboardAvoidingView
+    // does the equivalent on Android, where that prop has no effect.
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView
+        style={[styles.root, { backgroundColor: colors.background }]}
+        contentContainerStyle={[padding, styles.scrollContent, contentStyle]}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive">
+        {body}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  scrollContent: { paddingBottom: Spacing.eight },
+  // Generous bottom padding so the last card clears the tab bar and leaves
+  // room for the keyboard to scroll into.
+  scrollContent: { paddingBottom: Spacing.eight * 2 },
   header: { marginBottom: Spacing.five, gap: Spacing.one },
   title: { marginTop: Spacing.one },
   subtitle: { marginTop: Spacing.one },

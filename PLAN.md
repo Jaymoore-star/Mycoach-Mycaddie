@@ -74,24 +74,27 @@ npx expo start --tunnel        # terminal 2 — must use --tunnel on this Wi-Fi
 isolation, so the phone cannot reach Metro over the LAN. If port 8081 is busy,
 an old Metro is still running — `Ctrl+C` it first.
 
-### Next up — step 8: Stats / Analytics / Handicap / Streak
+### Next up
 
-Four screens, all currently stubs in `src/app/`. The data and backend maths
-mostly exist already:
+Every screen is built. No placeholders remain in the app. What's left:
 
-- **Handicap** — `api.rounds.getHandicapData` is written and returns index,
-  trend and contributing rounds. The screen just needs to render it.
-- **Stats** — needs `convex/shots.ts` ported (`logShot`, `getRecentShots`,
-  `deleteShot`) plus `convex/skillTests.ts` and `convex/lib/skillTests.ts`.
-- **Streak** — needs `convex/streaks.ts` ported.
-- **Analytics** — needs `convex/analytics.ts` ported.
+1. **OpenAI API key** — unblocks the two "coming next" cards: conversational
+   coaching on My Coach, and automatic swing analysis on My Swing. Set it with
+   `npx convex env set OPENAI_API_KEY ...`, then port `analyzeSwing` from
+   `reference/convex/swingVideos.ts` and the coach chat from
+   `reference/src/pages/coach/page.tsx`.
+2. **Skills tests** — `reference/convex/skillTests.ts` and
+   `reference/convex/lib/skillTests.ts` are not ported. The phase gates in the
+   90-Day Program currently rely on drill completion alone.
+3. **Step 10, the 3D swing visualiser** — `@react-three/fiber` on `expo-gl`.
+   Highest risk, lowest value; everything ships without it.
+4. **Real course data** — see the launch checklist.
+5. **Convex function tests** — `convex-test` to mock auth and the database.
+   The pure logic in `convex/lib` is covered (219 tests); the functions are not.
 
-Reference sources live in `reference/convex/` and `reference/src/pages/`.
-
-**Charts are the one real unknown.** The reference uses `recharts`, which is
-web-only. `react-native-svg` is already installed, so simple trend lines and
-bars can be drawn directly; reach for `victory-native` only if that proves
-fiddly.
+Charts are drawn with `react-native-svg` in `src/components/ui/chart.tsx`
+(`Sparkline`, `BarRow`, `CalendarHeat`, `HeroStat`) — single-series, one hue,
+direct labels. No chart library was needed.
 
 ### Rules that must not be broken
 
@@ -159,8 +162,9 @@ Worth fixing there too if anyone is using it:
 - [x] 5. Dashboard + 90-Day Program — **done**, curriculum ported (1,937 lines)
 - [x] 6. Caddie mode — **done**, 18-course library, WHS handicap, club recommendation
 - [x] 7. Launch Monitor + My Bag — **done**
-- [ ] 8. Stats / Analytics / Handicap / Streak
-- [ ] 9. Swing video + AI analysis
+- [x] 8. Stats / Analytics / Handicap / Streak — **done**, plus Guide and My Coach
+- [~] 9. Swing video — **capture, library and storage done**; AI analysis needs an
+  OpenAI API key on the deployment
 - [ ] 10. 3D swing visualiser (`three.js` → `expo-gl`) — deferred, highest risk
 
 ## Known port challenges

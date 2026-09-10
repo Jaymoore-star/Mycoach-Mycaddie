@@ -1,7 +1,8 @@
 // My Coach / My Caddie — Coach roster
 
-export type { CoachId } from "@/convex/lib/coachLevels";
 import type { CoachId } from "@/convex/lib/coachLevels";
+
+export type { CoachId };
 
 export type TtsVoice = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" | "coral" | "ash" | "sage" | "ballad" | "verse";
 

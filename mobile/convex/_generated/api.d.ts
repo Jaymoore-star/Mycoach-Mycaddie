@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as analytics from "../analytics.js";
 import type * as auth from "../auth.js";
 import type * as clubs from "../clubs.js";
 import type * as devTools from "../devTools.js";
@@ -21,10 +22,15 @@ import type * as lib_courses from "../lib/courses.js";
 import type * as lib_curriculum from "../lib/curriculum.js";
 import type * as lib_handicap from "../lib/handicap.js";
 import type * as lib_program from "../lib/program.js";
+import type * as lib_shotInsight from "../lib/shotInsight.js";
+import type * as lib_streaks from "../lib/streaks.js";
 import type * as lib_strokesGained from "../lib/strokesGained.js";
 import type * as profiles from "../profiles.js";
 import type * as rounds from "../rounds.js";
 import type * as sessions from "../sessions.js";
+import type * as shots from "../shots.js";
+import type * as streaks from "../streaks.js";
+import type * as swingVideos from "../swingVideos.js";
 
 import type {
   ApiFromModules,
@@ -33,6 +39,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  analytics: typeof analytics;
   auth: typeof auth;
   clubs: typeof clubs;
   devTools: typeof devTools;
@@ -46,10 +53,15 @@ declare const fullApi: ApiFromModules<{
   "lib/curriculum": typeof lib_curriculum;
   "lib/handicap": typeof lib_handicap;
   "lib/program": typeof lib_program;
+  "lib/shotInsight": typeof lib_shotInsight;
+  "lib/streaks": typeof lib_streaks;
   "lib/strokesGained": typeof lib_strokesGained;
   profiles: typeof profiles;
   rounds: typeof rounds;
   sessions: typeof sessions;
+  shots: typeof shots;
+  streaks: typeof streaks;
+  swingVideos: typeof swingVideos;
 }>;
 
 /**
