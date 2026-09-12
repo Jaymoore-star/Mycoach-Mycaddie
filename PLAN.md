@@ -60,9 +60,16 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 ## Resume here
 
 **Last worked: 12 September 2026. Steps 1-8 complete, plus skills tests, swing
-analysis (`b7e32cc`) and the coach chat. 247 tests pass, lint is clean, and both
-platform bundles build. The coach chat is built but NOT committed - it is
-sitting in the working tree for review.**
+analysis and the coach chat; all pushed to `main` (`b0ac575`). Working tree
+clean. 247 tests pass, lint is clean, and both platform bundles build.**
+
+Every "coming next" card is gone - the app has no placeholder copy left. What
+remains is new scope, not unfinished work.
+
+**Not yet verified on a device:** the chat keyboard behaviour and the coach
+bubble's clearance above the tab bar. Both were reasoned to a root cause and
+build clean, but nobody has looked at them rendered on a phone. Check My Caddie
+and My Swing first - they have the most going on at the bottom of the screen.
 
 ### Start the app
 
@@ -75,6 +82,14 @@ npx expo start --tunnel        # terminal 2 - must use --tunnel on this Wi-Fi
 `--tunnel` is not optional on the "LQ Admin" network: it runs AP client
 isolation, so the phone cannot reach Metro over the LAN. If port 8081 is busy,
 an old Metro is still running - `Ctrl+C` it first.
+
+ngrok needs an account now, and the authtoken is already saved to
+`~/.ngrok2/ngrok.yml` on this machine, so `--tunnel` works as-is. On a new
+machine it fails with a misleading `Cannot read properties of undefined
+(reading 'body')` and a pointer to the ngrok status page; the real error is
+`ERR_NGROK_4018`, visible by running
+`node_modules/@expo/ngrok-bin-win32-x64/ngrok.exe http 8081 --log stdout`
+directly. Fix with `...ngrok.exe authtoken <token>`.
 
 ### Working agreement
 
