@@ -244,6 +244,9 @@ export default defineSchema({
     durationSeconds: v.number(),
     recordedAt: v.string(), // ISO timestamp
     linkedSessionId: v.optional(v.id('launchSessions')), // linked R10 session
+    // Stills pulled off the clip on-device, in swing order. These are what the
+    // vision model actually reads; without them analysis is club-level only.
+    frameStorageIds: v.optional(v.array(v.id('_storage'))),
     // AI analysis fields
     aiFeedback: v.optional(
       v.object({
@@ -252,6 +255,12 @@ export default defineSchema({
         improvements: v.array(v.string()),
         drills: v.array(v.string()),
         analyzedAt: v.string(),
+        // What the model could actually see, keyed to the point in the swing.
+        observations: v.optional(
+          v.array(v.object({ position: v.string(), detail: v.string() })),
+        ),
+        // 'video' when read from frames, 'club' when it is generic guidance.
+        basis: v.optional(v.union(v.literal('video'), v.literal('club'))),
       }),
     ),
     aiAnalysisStatus: v.optional(
