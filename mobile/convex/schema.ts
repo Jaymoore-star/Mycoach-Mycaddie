@@ -329,6 +329,30 @@ export default defineSchema({
     .index('by_session', ['sessionId'])
     .index('by_profile', ['profileId']),
 
+  /**
+   * Maps a golfer to their conversation with each coach.
+   *
+   * The messages themselves live in the `@convex-dev/agent` component, keyed
+   * by an opaque `threadId`. This table is the ownership record: the client
+   * only ever sends a `profileId`, and `convex/coachChat.ts` resolves it to a
+   * thread here after checking the profile belongs to the caller. One thread
+   * per coach, so switching coach opens that coach's own conversation rather
+   * than handing a new persona someone else's history.
+   */
+  coachThreads: defineTable({
+    userId: v.id('users'),
+    profileId: v.id('golferProfiles'),
+    coachId: v.union(
+      v.literal('que'),
+      v.literal('mason'),
+      v.literal('sam'),
+      v.literal('dom'),
+    ),
+    threadId: v.string(),
+  })
+    .index('by_profile_and_coach', ['profileId', 'coachId'])
+    .index('by_profile', ['profileId']),
+
   // Cached course data fetched from OpenGolfAPI - keyed by external course ID
   courseCache: defineTable({
     externalId: v.string(), // OpenGolfAPI course id

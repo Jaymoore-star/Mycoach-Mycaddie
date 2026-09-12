@@ -11,12 +11,15 @@
 import type * as analytics from "../analytics.js";
 import type * as auth from "../auth.js";
 import type * as clubs from "../clubs.js";
+import type * as coachChat from "../coachChat.js";
 import type * as devTools from "../devTools.js";
 import type * as http from "../http.js";
 import type * as launchMonitor from "../launchMonitor.js";
 import type * as lib_bag from "../lib/bag.js";
 import type * as lib_caddie from "../lib/caddie.js";
+import type * as lib_coachContext from "../lib/coachContext.js";
 import type * as lib_coachLevels from "../lib/coachLevels.js";
+import type * as lib_coachPersona from "../lib/coachPersona.js";
 import type * as lib_courseIntegrity from "../lib/courseIntegrity.js";
 import type * as lib_courses from "../lib/courses.js";
 import type * as lib_curriculum from "../lib/curriculum.js";
@@ -44,12 +47,15 @@ declare const fullApi: ApiFromModules<{
   analytics: typeof analytics;
   auth: typeof auth;
   clubs: typeof clubs;
+  coachChat: typeof coachChat;
   devTools: typeof devTools;
   http: typeof http;
   launchMonitor: typeof launchMonitor;
   "lib/bag": typeof lib_bag;
   "lib/caddie": typeof lib_caddie;
+  "lib/coachContext": typeof lib_coachContext;
   "lib/coachLevels": typeof lib_coachLevels;
+  "lib/coachPersona": typeof lib_coachPersona;
   "lib/courseIntegrity": typeof lib_courseIntegrity;
   "lib/courses": typeof lib_courses;
   "lib/curriculum": typeof lib_curriculum;
@@ -94,4 +100,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  agent: import("@convex-dev/agent/_generated/component.js").ComponentApi<"agent">;
+};

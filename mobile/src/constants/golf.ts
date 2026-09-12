@@ -36,13 +36,9 @@ export const SKILL_LEVELS = [
 
 export type SkillLevel = (typeof SKILL_LEVELS)[number];
 
-export const SKILL_LABELS: Record<SkillLevel, string> = {
-  beginner: 'Beginner',
-  intermediate: 'Intermediate',
-  advanced: 'Advanced',
-  scratch: 'Scratch',
-  tour_pro: 'Tour Pro',
-};
+// Defined in the curriculum so the server can name the level too - see the
+// note on PHASE_LABELS above for why these constants live on that side.
+export { SKILL_LABELS } from '@/convex/lib/curriculum';
 
 /** Onboarding skill picker - handicap band and blurb per level. */
 export const SKILL_OPTIONS: {

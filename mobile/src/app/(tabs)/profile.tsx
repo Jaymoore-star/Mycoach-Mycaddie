@@ -7,6 +7,7 @@ import {
   CalendarDays,
   ChevronRight,
   Flame,
+  GraduationCap,
   LineChart,
   LogOut,
   Radio,
@@ -24,6 +25,9 @@ import { useTheme } from '@/hooks/use-theme';
 
 /** The secondary screens that don't get a bottom-tab slot. */
 const LINKS = [
+  // Changing coach changes which drills the program generates, so it is a
+  // settings decision rather than something to tap past on the My Coach tab.
+  { href: '/coach-select', label: 'Change Coach', icon: GraduationCap },
   { href: '/stats', label: 'My Stats', icon: BarChart2 },
   { href: '/bag', label: 'My Bag', icon: Briefcase },
   { href: '/handicap', label: 'My Handicap', icon: Target },

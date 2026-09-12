@@ -106,9 +106,12 @@ function RootNavigator({ background }: { background: string }) {
         <Stack.Screen name="program" />
         <Stack.Screen name="launch" />
         <Stack.Screen name="guide" />
+        <Stack.Screen name="coach-select" />
         <Stack.Screen name="skills-test" />
         <Stack.Screen name="round/[id]" />
         <Stack.Screen name="launch/[id]" />
+        {/* Modal so the Home bubble can open it over whatever is on screen. */}
+        <Stack.Screen name="ask-coach" options={{ presentation: 'modal' }} />
       </Stack.Protected>
 
       <Stack.Protected guard={!isAuthenticated}>

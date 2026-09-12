@@ -59,9 +59,10 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 
 ## Resume here
 
-**Last worked: 10 September 2026. Steps 1-8 complete plus skills tests; all
-pushed to `main` (`c18bbb8`). Working tree clean. 233 tests pass, lint is
-clean, and both platform bundles build.**
+**Last worked: 12 September 2026. Steps 1-8 complete, plus skills tests, swing
+analysis (`b7e32cc`) and the coach chat. 247 tests pass, lint is clean, and both
+platform bundles build. The coach chat is built but NOT committed - it is
+sitting in the working tree for review.**
 
 ### Start the app
 
@@ -85,32 +86,31 @@ the working tree for review. Verification still runs every time.
 Every screen exists and no placeholder text remains anywhere in the app:
 
 Landing, sign-in, onboarding, Home, 90-Day Program, Skills Test, My Caddie and
-the round scorecard, My Coach, My Swing, Profile, My Stats, My Bag, My
-Handicap, My Analytics, My Streak, Launch Monitor, How to Use.
+the round scorecard, My Coach, Ask Your Coach, My Swing, Profile, My Stats, My
+Bag, My Handicap, My Analytics, My Streak, Launch Monitor, How to Use.
+
+The coach chat is reached two ways: the card at the bottom of My Coach, and the
+floating coach bubble on Home (bottom right). It opens as a modal, so the bubble
+can present it over whatever the golfer was looking at.
 
 Backend: `profiles`, `sessions`, `rounds`, `clubs`, `launchMonitor`, `shots`,
-`skillTests`, `streaks`, `analytics`, `swingVideos`, `auth`, plus `devTools`
-(internal only). Shared pure logic in `convex/lib`: `curriculum`, `caddie`,
-`courses`, `courseIntegrity`, `handicap`, `streaks`, `skillTests`,
-`shotInsight`, `strokesGained`, `program`, `bag`, `coachLevels`.
+`skillTests`, `streaks`, `analytics`, `swingVideos`, `coachChat`, `auth`, plus
+`devTools` (internal only). Shared pure logic in `convex/lib`: `curriculum`,
+`caddie`, `courses`, `courseIntegrity`, `handicap`, `streaks`, `skillTests`,
+`shotInsight`, `strokesGained`, `program`, `bag`, `coachLevels`,
+`coachPersona`, `coachContext`.
 
 ### Next up
 
-1. **OpenAI API key** - the only thing blocking feature-completeness. It
-   unblocks the two "coming next" cards: conversational coaching on My Coach,
-   and automatic swing analysis on My Swing. Set it with
-   `npx convex env set OPENAI_API_KEY ...`, then port `analyzeSwing` from
-   `reference/convex/swingVideos.ts` and the coach chat from
-   `reference/src/pages/coach/page.tsx`.
-2. **Step 10, the 3D swing visualiser** - `@react-three/fiber` on `expo-gl`.
+1. **Step 10, the 3D swing visualiser** - `@react-three/fiber` on `expo-gl`.
    Highest risk, lowest value; everything ships without it.
-3. **Real course data** - see the launch checklist.
-4. **Convex function tests** - `convex-test` to mock auth and the database.
-   The pure logic in `convex/lib` is covered (233 tests); the functions are not.
-5. **Voice features** - `reference/convex/voice.ts`, `voiceToken.ts` and
+2. **Real course data** - see the launch checklist.
+3. **Convex function tests** - `convex-test` to mock auth and the database.
+   The pure logic in `convex/lib` is covered (247 tests); the functions are not.
+4. **Voice features** - `reference/convex/voice.ts`, `voiceToken.ts` and
    `launchMonitorVoice.ts` are unported. The web app had a voice-driven
-   on-course caddie. Needs the OpenAI key too.
-6. **Custom courses** - the `customCourses` table and schema exist but there is
+   on-course caddie. The OpenAI key is set, so nothing blocks this.
+5. **Custom courses** - the `customCourses` table and schema exist but there is
    no UI, so only the 18 built-in courses are selectable.
 
 Charts are drawn with `react-native-svg` in `src/components/ui/chart.tsx`
@@ -123,10 +123,15 @@ direct labels. No chart library was needed.
    Importing a Convex *function* module (`convex/clubs.ts`, etc.) pulls
    `@convex-dev/auth/server` → `jose` → `node:buffer` into the bundle and Metro
    fails to resolve it. Shared constants belong in `convex/lib/`.
-2. **Never use `toISOString().split('T')[0]` for a user-facing date.** That is
+2. **Server-only dependencies must never be imported from `src/`.** The coach
+   chat pulls in `@convex-dev/agent`, `ai` and `@ai-sdk/openai`. Convex bundles
+   `convex/` separately from Metro, so these cost the app nothing - but only
+   while no screen imports them. The chat screen talks to `api.coachChat.*`
+   and nothing else; there is deliberately no `@convex-dev/agent/react`.
+3. **Never use `toISOString().split('T')[0]` for a user-facing date.** That is
    UTC. The client sends its own local date via `localDate()` in
    `src/lib/date.ts`, and the server validates the format.
-3. **Check ownership in every query and mutation.** Ids arrive from the client.
+4. **Check ownership in every query and mutation.** Ids arrive from the client.
    Follow the `ownedProfile` helper pattern.
 4. **Enforce gates server-side.** Disabled buttons are a convenience only.
 5. **Numbers use `<ThemedText variant="stat">`.** Playfair's old-style figures

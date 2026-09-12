@@ -97,6 +97,19 @@ export const PHASE_ORDER: Phase[] = [
   "putting", "short_game", "pitching", "mid_irons", "hybrids_woods", "driver"
 ];
 
+/**
+ * Display names for the skill levels. Here rather than in the client's
+ * constants because the coach chat briefing names the golfer's level too, and
+ * two copies would eventually disagree.
+ */
+export const SKILL_LABELS: Record<SkillLevel, string> = {
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
+  scratch: "Scratch",
+  tour_pro: "Tour Pro",
+};
+
 // ─── Drill library per phase ─────────────────────────────────────────────────
 const DRILLS: Record<Phase, Drill[]> = {
   putting: [
