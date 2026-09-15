@@ -60,19 +60,23 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 ## Resume here
 
 **Last worked: 14 September 2026. Steps 1-8 complete, plus skills tests, swing
-analysis, the coach chat, the voice features and custom courses. 407 tests
-pass, lint is clean, and both platform bundles build. The working tree holds
-the voice, custom-course and Convex-function-test work, uncommitted for
-review.**
+analysis, the coach chat, the voice features and custom courses; all pushed to
+`main` (`f347ff0`). Working tree clean. 415 tests pass, lint is clean, and both
+platform bundles build.**
 
 Every "coming next" card is gone - the app has no placeholder copy left. Of the
 five items that were listed as next up, three are done: voice, Convex function
 tests, and custom courses. What remains is the 3D visualiser and real course
 data, both deliberately deferred.
 
+**Used on a phone this session:** the chat, the spoken caddie, dictation, and
+the streaming replies. Each was fixed against what the device actually did, not
+against what the code looked like - the audio session, the press race, the
+empty commit and the dead realtime endpoint were all found that way.
+
 **Not yet verified on a device:** the coach bubble's clearance above the tab
-bar, and the new My Courses form on a small screen. The chat keyboard and the
-spoken caddie have now been used on a phone.
+bar, and the My Courses form on a small screen - it is the longest form in the
+app by some margin and nobody has scrolled it on a phone.
 
 ### Start the app
 
