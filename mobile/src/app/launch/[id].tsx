@@ -1,19 +1,23 @@
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Plus, Trash2 } from 'lucide-react-native';
-import { useState } from 'react';
+import { Plus, Trash2, X } from 'lucide-react-native';
+import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import { BAG_ORDER } from '@/convex/lib/bag';
+import type { ParsedShot } from '@/convex/lib/voice';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { ThemedText } from '@/components/ui/text';
+import { MicButton, SpeakButton, VoiceTranscript } from '@/components/ui/voice-controls';
 import { FontSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useLiveDictation } from '@/hooks/use-live-dictation';
+import { usePlayback, voiceErrorMessage } from '@/hooks/use-voice';
 
 /** The R10 metrics worth typing in by hand. */
 const FIELDS = [
@@ -47,6 +51,76 @@ export default function LaunchSessionScreen() {
     setValues((v) => ({ ...v, [key]: text }));
   }
 
+  // ─── Voice ────────────────────────────────────────────────────────────
+
+  const parseShot = useAction(api.voice.parseShot);
+  const readAloud = useAction(api.voice.readAloudSession);
+  const debrief = usePlayback();
+
+  const [heard, setHeard] = useState('');
+  const [spoken, setSpoken] = useState<ParsedShot | null>(null);
+  const [parsing, setParsing] = useState(false);
+  const [debriefText, setDebriefText] = useState('');
+  const [debriefBusy, setDebriefBusy] = useState(false);
+
+  /**
+   * A spoken shot fills the form; it does not save.
+   *
+   * Transcription plus extraction is two chances to mishear a number, and a
+   * wrong carry distance quietly skews every average the bag is built from.
+   * The golfer sees what was understood and taps Add shot.
+   */
+  const handleSpokenShot = useCallback(
+    async (transcript: string) => {
+      setHeard(transcript);
+      setParsing(true);
+      try {
+        const parsed = await parseShot({ transcript });
+        setSpoken(parsed);
+
+        if (parsed.club) setClub(parsed.club);
+        setValues((v) => ({
+          ...v,
+          // "It went 145" is a carry number in a launch monitor session.
+          ...(parsed.actualDistanceYards != null
+            ? { carryYards: String(parsed.actualDistanceYards) }
+            : {}),
+        }));
+      } catch (error) {
+        Alert.alert('Could not read that shot', voiceErrorMessage(error, 'Please try again.'));
+      } finally {
+        setParsing(false);
+      }
+    },
+    [parseShot],
+  );
+
+  // The shot is read once, from the finished sentence - a half-heard "one
+  // forty" would otherwise fill the form in before "five" arrived.
+  const dictation = useLiveDictation({ onFinal: (text) => void handleSpokenShot(text) });
+
+  function clearSpoken() {
+    setHeard('');
+    setSpoken(null);
+  }
+
+  async function hearDebrief() {
+    if (debrief.isPlaying) {
+      debrief.stop();
+      return;
+    }
+    setDebriefBusy(true);
+    try {
+      const result = await readAloud({ sessionId });
+      setDebriefText(result.text);
+      await debrief.play(result.url);
+    } catch (error) {
+      Alert.alert('Could not read that out', voiceErrorMessage(error, 'Please try again.'));
+    } finally {
+      setDebriefBusy(false);
+    }
+  }
+
   async function handleAdd() {
     // Empty strings mean "not measured" - send undefined so the average
     // ignores them rather than treating a blank as zero.
@@ -69,8 +143,19 @@ export default function LaunchSessionScreen() {
 
     setBusy(true);
     try {
-      await addShot({ sessionId, club, ...parsed });
+      // Shape, contact and notes have no typed input on this screen - the only
+      // way they reach a launch shot is by being spoken, so they ride along
+      // with whichever numbers were entered.
+      await addShot({
+        sessionId,
+        club,
+        ...parsed,
+        ...(spoken?.shotShape ? { shotShape: spoken.shotShape } : {}),
+        ...(spoken?.contactType ? { contactType: spoken.contactType } : {}),
+        ...(spoken?.notes ? { notes: spoken.notes } : {}),
+      });
       setValues({});
+      clearSpoken();
     } catch {
       Alert.alert('Could not add shot', 'Please try again.');
     } finally {
@@ -106,6 +191,24 @@ export default function LaunchSessionScreen() {
               }`
             : 'No shots logged yet.'
         }>
+        {/* ─── Spoken debrief ─────────────────────────────────────────── */}
+        {session.shotCount > 0 && (
+          <Card eyebrow="Debrief" title="Hear how it went" style={styles.debrief}>
+            <ThemedText variant="caption" tone="secondary">
+              Your coach reads the session back to you - the numbers, the spread and
+              what to work on next.
+            </ThemedText>
+            <SpeakButton
+              state={debriefBusy ? 'loading' : debrief.isPlaying ? 'speaking' : 'idle'}
+              onSpeak={() => void hearDebrief()}
+              onStop={debrief.stop}
+              label={debrief.isPlaying ? 'Stop' : 'Play debrief'}
+              style={styles.micButton}
+            />
+            {debriefText ? <VoiceTranscript text={debriefText} /> : null}
+          </Card>
+        )}
+
         {/* ─── Club picker ────────────────────────────────────────────── */}
         <ThemedText variant="caption" tone="muted" uppercase>
           Club
@@ -136,6 +239,39 @@ export default function LaunchSessionScreen() {
 
         {/* ─── Metric entry ───────────────────────────────────────────── */}
         <Card eyebrow="Add a shot" title={club} style={styles.block}>
+          <ThemedText variant="caption" tone="secondary">
+            Tap the mic and say it - &ldquo;seven iron, one forty five, little fade,
+            caught it clean&rdquo; - then tap stop. Or type the numbers in below.
+          </ThemedText>
+
+          <MicButton
+            state={dictation.state}
+            onStart={() => void dictation.start()}
+            onStop={() => void dictation.stop()}
+            {...(parsing ? { label: 'Reading the shot' } : {})}
+            style={styles.micButton}
+          />
+
+          {dictation.error && (
+            <ThemedText variant="caption" style={{ color: colors.destructive }}>
+              {dictation.error}
+            </ThemedText>
+          )}
+
+          {heard ? (
+            <View style={styles.heard}>
+              <VoiceTranscript text={heard} speaker="You said" />
+              <View style={styles.heardFoot}>
+                <ThemedText variant="caption" tone="muted">
+                  {describeParsed(spoken)}
+                </ThemedText>
+                <Pressable onPress={clearSpoken} hitSlop={8} accessibilityRole="button">
+                  <X size={14} color={colors.textMuted} />
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
           <View style={styles.fieldGrid}>
             {FIELDS.map((f) => (
               <View key={f.key} style={styles.field}>
@@ -212,6 +348,24 @@ export default function LaunchSessionScreen() {
   );
 }
 
+/** What the extractor actually took from the sentence, in plain words. */
+function describeParsed(shot: ParsedShot | null): string {
+  if (!shot) return 'Working out what you said…';
+
+  const parts = [
+    shot.club,
+    shot.actualDistanceYards != null ? `${shot.actualDistanceYards} yds` : null,
+    shot.shotShape,
+    shot.contactType ? `${shot.contactType} contact` : null,
+  ].filter(Boolean);
+
+  // Nothing usable is a real outcome, not an error: the numbers are still
+  // there to type, and saying so beats leaving a blank line under the mic.
+  return parts.length > 0
+    ? `Picked up: ${parts.join(' · ')}`
+    : 'Nothing usable in that one - type it in instead.';
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.metric}>
@@ -234,7 +388,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
 
+  debrief: { marginTop: Spacing.three, gap: Spacing.two },
   block: { marginTop: Spacing.three },
+  micButton: { marginTop: Spacing.two },
+  heard: { gap: Spacing.two, marginTop: Spacing.two },
+  heardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
   field: { flexBasis: '47%', gap: Spacing.one },
   input: {

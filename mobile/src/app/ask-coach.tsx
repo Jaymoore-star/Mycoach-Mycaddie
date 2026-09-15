@@ -1,8 +1,8 @@
 import { usePaginatedQuery, useMutation, useQuery } from 'convex/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ArrowUp, RotateCcw, X } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowUp, Mic, RotateCcw, Square, Volume2, X } from 'lucide-react-native';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,11 +17,16 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api } from '@/convex/_generated/api';
+import type { CoachId } from '@/convex/lib/coachLevels';
 
+import { RichText } from '@/components/ui/rich-text';
 import { ThemedText } from '@/components/ui/text';
+import { TypingDots } from '@/components/ui/typing-dots';
 import { getCoachById } from '@/constants/coaches';
 import { FontSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useLiveDictation } from '@/hooks/use-live-dictation';
+import { useSpeech } from '@/hooks/use-voice';
 
 /**
  * Ask your coach - the conversational half of My Coach.
@@ -64,11 +69,69 @@ export default function AskCoachScreen() {
     { initialNumItems: PAGE_SIZE },
   );
 
+  // The reply as it is being written. A separate single-row query rather than
+  // part of `listMessages`, so a token does not invalidate the whole paginated
+  // conversation six times a second.
+  const streaming = useQuery(
+    api.coachChat.streamingReply,
+    profile ? { profileId: profile._id } : 'skip',
+  );
+
   const sendMessage = useMutation(api.coachChat.sendMessage);
   const clearConversation = useMutation(api.coachChat.clearConversation);
 
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+
+  // ─── Voice ────────────────────────────────────────────────────────────
+  // Reading a coaching reply out loud is the same feature the web app called
+  // `getCoachResponse`, arrived at from the other side: the reply already
+  // exists with the full persona and the golfer's data behind it, so it only
+  // needs a voice, not a second generation.
+
+  const speech = useSpeech(profile?.coachId as CoachId | undefined);
+  const [spokenKey, setSpokenKey] = useState<string | null>(null);
+
+  function speakMessage(message: ChatMessage) {
+    if (spokenKey === message.key && speech.isBusy) {
+      speech.stop();
+      setSpokenKey(null);
+      return;
+    }
+    setSpokenKey(message.key);
+    void speech.speak(message.text);
+  }
+
+  /**
+   * What was typed before the microphone was tapped.
+   *
+   * Dictation reports the whole transcript each time it changes, not a delta,
+   * so it cannot simply be appended - it would repeat the sentence on every
+   * update. Holding the prefix separately means the golfer can type half a
+   * question, speak the rest, and keep both.
+   */
+  const [typedBeforeSpeaking, setTypedBeforeSpeaking] = useState('');
+
+  // Dictating into the composer rather than sending: what a coach is asked
+  // should be read back before it goes, and a misheard question wastes a turn
+  // of the conversation.
+  const dictation = useLiveDictation({
+    onText: useCallback(
+      (text: string) => {
+        setDraft(typedBeforeSpeaking.trim() ? `${typedBeforeSpeaking.trim()} ${text}` : text);
+      },
+      [typedBeforeSpeaking],
+    ),
+  });
+
+  function toggleMic() {
+    if (dictation.isRecording) {
+      void dictation.stop();
+      return;
+    }
+    setTypedBeforeSpeaking(draft);
+    void dictation.start();
+  }
 
   /**
    * Keyboard height, tracked by hand.
@@ -101,19 +164,29 @@ export default function AskCoachScreen() {
    * can arrive as several rows. Only the text ones are worth rendering, and
    * a row with no text yet is the reply still being written.
    */
-  const messages = useMemo<ChatMessage[]>(
-    () =>
-      results
-        .filter((m) => m.message?.role === 'user' || m.message?.role === 'assistant')
-        .map((m) => ({
-          key: m._id,
-          role: m.message?.role === 'user' ? ('user' as const) : ('assistant' as const),
-          text: m.text ?? '',
-          pending: m.status === 'pending',
-        }))
-        .filter((m) => m.text.length > 0 || m.pending),
-    [results],
-  );
+  const messages = useMemo<ChatMessage[]>(() => {
+    const stored = results
+      .filter((m) => m.message?.role === 'user' || m.message?.role === 'assistant')
+      .map((m) => ({
+        key: m._id,
+        role: m.message?.role === 'user' ? ('user' as const) : ('assistant' as const),
+        text: m.text ?? '',
+        pending: m.status === 'pending',
+      }))
+      .filter((m) => m.text.length > 0 || m.pending);
+
+    if (!streaming) return stored;
+
+    // The list is inverted, so the newest row goes first. One fixed key, so
+    // React updates this bubble in place as the words arrive instead of
+    // remounting it on every change.
+    return [
+      { key: 'streaming', role: 'assistant' as const, text: streaming.text, pending: true },
+      // The component files a pending placeholder of its own while generating;
+      // showing both would give the golfer two coaches answering at once.
+      ...stored.filter((m) => !(m.pending && m.text.length === 0)),
+    ];
+  }, [results, streaming]);
 
   const send = useCallback(
     (text: string) => {
@@ -121,9 +194,11 @@ export default function AskCoachScreen() {
       if (!profile || trimmed.length === 0 || sending) return;
 
       setDraft('');
-      // The reply takes a few seconds and is worth reading; holding the
-      // keyboard up would cover most of it.
-      Keyboard.dismiss();
+      // The keyboard deliberately stays up. Dismissing it here re-laid out the
+      // whole list - once on the way down and again when the golfer tapped
+      // back in - which is most of what made sending feel slow. The list is
+      // inverted, so the newest message already sits directly above the
+      // composer and stays in view with the keyboard open.
       setSending(true);
       void sendMessage({ profileId: profile._id, prompt: trimmed })
         .catch((error: unknown) => {
@@ -213,10 +288,43 @@ export default function AskCoachScreen() {
             onEndReached={() => {
               if (status === 'CanLoadMore') loadMore(PAGE_SIZE);
             }}
+            // Tuned for a chat that grows while it is on screen. The defaults
+            // render far more rows than a phone shows, and every incoming
+            // token re-runs the list.
+            initialNumToRender={12}
+            maxToRenderPerBatch={8}
+            windowSize={9}
             renderItem={({ item }) => (
-              <Bubble message={item} accent={coach.accent} name={coach.name} />
+              <Bubble
+                message={item}
+                accent={coach.accent}
+                name={coach.name}
+                onSpeak={speakMessage}
+                speaking={spokenKey === item.key && speech.isSpeaking}
+                loadingSpeech={spokenKey === item.key && speech.state === 'loading'}
+              />
             )}
           />
+        )}
+
+        {(dictation.error || dictation.isBusy) && (
+          <View style={[styles.voiceError, { borderTopColor: colors.border }]}>
+            <ThemedText
+              variant="caption"
+              style={dictation.error ? { color: colors.destructive } : undefined}
+              tone={dictation.error ? 'default' : 'muted'}>
+              {dictation.error ??
+                (dictation.state === 'connecting'
+                  ? 'Opening the microphone…'
+                  : dictation.state === 'transcribing'
+                    ? 'Finishing what you said…'
+                    : dictation.isDegraded
+                      ? // The socket did not come up, so nothing appears until
+                        // the recording is finished and sent off in one piece.
+                        'Recording - tap the square when you are done.'
+                      : 'Listening - tap the square when you are done.')}
+            </ThemedText>
+          </View>
         )}
 
         <View
@@ -245,6 +353,36 @@ export default function AskCoachScreen() {
             ]}
           />
           <Pressable
+            onPress={toggleMic}
+            disabled={dictation.state === 'transcribing' || dictation.state === 'denied'}
+            accessibilityRole="button"
+            accessibilityLabel={
+              dictation.isRecording ? 'Stop dictating' : 'Dictate your question'
+            }
+            accessibilityState={{
+              busy: dictation.state === 'transcribing' || dictation.state === 'connecting',
+            }}
+            style={[
+              styles.mic,
+              {
+                backgroundColor: dictation.isRecording
+                  ? colors.destructive
+                  : colors.backgroundElement,
+              },
+            ]}>
+            {dictation.state === 'transcribing' || dictation.state === 'connecting' ? (
+              <ActivityIndicator
+                size="small"
+                color={dictation.isRecording ? colors.primaryText : colors.textMuted}
+              />
+            ) : dictation.isRecording ? (
+              // A stop square while recording: the same tap now ends it.
+              <Square size={16} color={colors.primaryText} fill={colors.primaryText} />
+            ) : (
+              <Mic size={20} color={colors.textMuted} />
+            )}
+          </Pressable>
+          <Pressable
             onPress={() => send(draft)}
             disabled={draft.trim().length === 0 || sending}
             accessibilityRole="button"
@@ -271,14 +409,27 @@ export default function AskCoachScreen() {
   );
 }
 
-function Bubble({
+/**
+ * Memoised on purpose.
+ *
+ * A reply arrives as a stream of updates, and each one re-runs the list. Only
+ * the last bubble is actually changing, so without this every message in the
+ * thread re-parses its markdown on every token.
+ */
+const Bubble = memo(function Bubble({
   message,
   accent,
   name,
+  onSpeak,
+  speaking,
+  loadingSpeech,
 }: {
   message: ChatMessage;
   accent: string;
   name: string;
+  onSpeak: (message: ChatMessage) => void;
+  speaking: boolean;
+  loadingSpeech: boolean;
 }) {
   const colors = useTheme();
   const mine = message.role === 'user';
@@ -287,9 +438,7 @@ function Bubble({
     return (
       <View style={[styles.row, styles.rowThem]}>
         <View style={[styles.bubble, { backgroundColor: colors.card }]}>
-          <ThemedText variant="caption" tone="muted">
-            {name} is thinking…
-          </ThemedText>
+          <TypingDots label={`${name} is thinking`} />
         </View>
       </View>
     );
@@ -314,13 +463,50 @@ function Bubble({
                 borderBottomLeftRadius: Radius.sm,
               },
         ]}>
-        <ThemedText variant="body" style={mine ? { color: colors.primaryText } : undefined}>
-          {message.text}
-        </ThemedText>
+        {/* The golfer's own message is exactly what they typed, so it needs no
+            parsing. The coach's may carry emphasis worth rendering. */}
+        {mine ? (
+          <ThemedText variant="body" style={{ color: colors.primaryText }}>
+            {message.text}
+          </ThemedText>
+        ) : (
+          <RichText>{message.text}</RichText>
+        )}
+
+        {/* Still arriving. The dots sit under the text so the golfer can read
+            what is written while the rest comes in. */}
+        {!mine && message.pending && message.text.length > 0 && (
+          <View style={styles.stillWriting}>
+            <TypingDots />
+          </View>
+        )}
+
+        {/* The coach's own words, spoken. Nothing to gain from replaying
+            the golfer's own message back at them, so it is one-sided. */}
+        {!mine && !message.pending && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={speaking ? `Stop ${name}` : `Hear ${name} say this`}
+            accessibilityState={{ busy: loadingSpeech }}
+            onPress={() => onSpeak(message)}
+            hitSlop={10}
+            style={styles.speakRow}>
+            {loadingSpeech ? (
+              <ActivityIndicator size="small" color={accent} />
+            ) : speaking ? (
+              <Square size={12} color={accent} fill={accent} />
+            ) : (
+              <Volume2 size={14} color={colors.textMuted} />
+            )}
+            <ThemedText variant="caption" tone="muted">
+              {loadingSpeech ? 'One moment' : speaking ? 'Stop' : 'Hear it'}
+            </ThemedText>
+          </Pressable>
+        )}
       </View>
     </View>
   );
-}
+});
 
 function Empty({
   coachName,
@@ -436,5 +622,24 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  stillWriting: { marginTop: Spacing.two },
+  voiceError: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  mic: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  speakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    marginTop: Spacing.two,
   },
 });

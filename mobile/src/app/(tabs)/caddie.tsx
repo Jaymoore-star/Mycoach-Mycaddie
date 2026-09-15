@@ -1,25 +1,26 @@
 import { useMutation, useQuery } from 'convex/react';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Flag, MapPin, Play, Search, Trash2 } from 'lucide-react-native';
+import { ChevronRight, Flag, MapPin, Play, Plus, Search, Trash2 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { api } from '@/convex/_generated/api';
 import type { Doc, Id } from '@/convex/_generated/dataModel';
 import {
-  COURSE_LIBRARY,
   type GolfCourse,
   type TeeBox,
+  filterCourses,
   getCoursePar,
   getCourseYardage,
-  searchCourses,
 } from '@/convex/lib/courses';
+import { isCustomCourseId } from '@/convex/lib/customCourses';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { ThemedText } from '@/components/ui/text';
 import { FontSize, GOLD, Radius, Spacing } from '@/constants/theme';
+import { useAllCourses } from '@/hooks/use-courses';
 import { useTheme } from '@/hooks/use-theme';
 
 const TEES: { value: TeeBox; label: string }[] = [
@@ -42,7 +43,9 @@ export default function CaddieScreen() {
   const [tee, setTee] = useState<TeeBox>('regular');
   const [busy, setBusy] = useState(false);
 
-  const results = useMemo(() => (query.trim() ? searchCourses(query) : COURSE_LIBRARY), [query]);
+  // The golfer's own courses and the built-in eighteen, searched by one rule.
+  const courses = useAllCourses();
+  const results = useMemo(() => filterCourses(courses, query), [courses, query]);
 
   // Every round under 18 holes is still open - not just the most recent one.
   const active = useMemo(() => rounds?.filter((r) => r.holes.length < 18) ?? [], [rounds]);
@@ -217,7 +220,14 @@ export default function CaddieScreen() {
               ]}>
               <View style={styles.rowBetween}>
                 <View style={styles.courseText}>
-                  <ThemedText variant="label">{course.name}</ThemedText>
+                  <View style={styles.nameRow}>
+                    <ThemedText variant="label">{course.name}</ThemedText>
+                    {isCustomCourseId(course.id) && (
+                      <ThemedText variant="caption" tone="accent" uppercase>
+                        Yours
+                      </ThemedText>
+                    )}
+                  </View>
                   <View style={styles.metaRow}>
                     <MapPin size={11} color={colors.textMuted} />
                     <ThemedText variant="caption" tone="muted">
@@ -281,11 +291,20 @@ export default function CaddieScreen() {
         {results.length === 0 && (
           <Card>
             <ThemedText variant="body" tone="secondary">
-              No courses match “{query.trim()}”.
+              No courses match “{query.trim()}”. If you play it regularly, add it as your
+              own course and your caddie will learn its yardages.
             </ThemedText>
           </Card>
         )}
       </View>
+
+      <Button
+        label="Add your own course"
+        variant="secondary"
+        icon={<Plus size={18} color={colors.text} />}
+        onPress={() => router.push('/courses')}
+        style={styles.addCourse}
+      />
 
       {/* ─── Completed rounds ────────────────────────────────────────── */}
       {finished.length > 0 && (
@@ -324,6 +343,8 @@ export default function CaddieScreen() {
 const styles = StyleSheet.create({
   firstHeading: { marginBottom: Spacing.two },
   sectionHeading: { marginTop: Spacing.five, marginBottom: Spacing.two },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  addCourse: { marginTop: Spacing.three },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   list: { gap: Spacing.two },
 

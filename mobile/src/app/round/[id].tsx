@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ChevronDown,
@@ -22,15 +22,21 @@ import {
   type TendencyProfile,
   buildCaddieRecommendation,
 } from '@/convex/lib/caddie';
-import { type TeeBox, describeBreak, getCourseById } from '@/convex/lib/courses';
+import type { CoachId } from '@/convex/lib/coachLevels';
+import { type TeeBox, describeBreak } from '@/convex/lib/courses';
+import { buildShotBrief } from '@/convex/lib/voice';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChipRow, type ChipOption } from '@/components/ui/chip-row';
 import { Screen } from '@/components/ui/screen';
 import { ThemedText } from '@/components/ui/text';
+import { MicButton, SpeakButton, VoiceTranscript } from '@/components/ui/voice-controls';
 import { FontSize, GOLD, Radius, Spacing } from '@/constants/theme';
+import { useCourse } from '@/hooks/use-courses';
 import { useTheme } from '@/hooks/use-theme';
+import { useLiveDictation } from '@/hooks/use-live-dictation';
+import { usePlayback, useSpeech, voiceErrorMessage } from '@/hooks/use-voice';
 
 const NO_TENDENCIES: TendencyProfile = {
   dominantMiss: null,
@@ -131,7 +137,11 @@ export default function RoundScreen() {
   const [selectedHole, setSelectedHole] = useState<number | null>(null);
   const holeNumber = selectedHole ?? firstUnplayed;
 
-  const course = round?.courseId ? getCourseById(round.courseId) : null;
+  // Resolves a built-in course or one the golfer added. Null while their own
+  // courses load, and null for good if they have since deleted this one - the
+  // round keeps its own par, rating and slope either way, so only the caddie's
+  // hole yardages are missing.
+  const course = useCourse(round?.courseId);
   const courseHole = course?.holes.find((h) => h.hole === holeNumber);
   const tee = (round?.teeBox ?? 'regular') as TeeBox;
   const holeYards = courseHole?.yards[tee] ?? 400;
@@ -203,6 +213,70 @@ export default function RoundScreen() {
         : undefined,
     );
   })();
+
+  // ─── Voice ────────────────────────────────────────────────────────────
+  // The brief is spoken from the recommendation already on screen rather than
+  // recomputed on the server, so the audio and the card can never disagree.
+
+  const coachId = profile?.coachId as CoachId | undefined;
+  const speech = useSpeech(coachId);
+  const reply = usePlayback();
+  const askCaddie = useAction(api.voice.askCaddie);
+
+  const [heard, setHeard] = useState('');
+  const [caddieAnswer, setCaddieAnswer] = useState('');
+  const [asking, setAsking] = useState(false);
+
+  // A plain function, not a `useCallback`: the React Compiler is on for this
+  // project and memoizes it, and a hand-written dependency list over values it
+  // considers mutable (`lie`, `recommendation`) makes it bail out of
+  // optimising the whole screen.
+  async function handleQuestion(transcript: string) {
+    if (!profile) return;
+
+    setHeard(transcript);
+    setCaddieAnswer('');
+    setAsking(true);
+    try {
+      // The caddie hears the same situation the card was built from, so its
+      // answer argues with the recommendation only when it means to.
+      const answer = await askCaddie({
+        profileId: profile._id,
+        transcript,
+        holeNumber,
+        par,
+        distanceToPin: distance,
+        windMph: windSpeed,
+        windDirection: windDir,
+        lie,
+        ...(recommendation
+          ? {
+              primaryClub: recommendation.primaryClub,
+              adjustedYardage: recommendation.adjustedYardage,
+              aimAdjustment: recommendation.aimAdjustment,
+            }
+          : {}),
+      });
+      setCaddieAnswer(answer.text);
+      await reply.play(answer.url);
+    } catch (error) {
+      Alert.alert(
+        'Your caddie could not answer',
+        voiceErrorMessage(error, 'Please try again.'),
+      );
+    } finally {
+      setAsking(false);
+    }
+  }
+
+  // `onFinal` only: the caddie is asked once, when the golfer stops talking.
+  // Firing on every word would send a fresh question per syllable.
+  const dictation = useLiveDictation({ onFinal: (text) => void handleQuestion(text) });
+
+  function hearTheBrief() {
+    if (!recommendation) return;
+    void speech.speak(buildShotBrief(recommendation, holeNumber, par));
+  }
 
   function goToHole(n: number) {
     if (n < 1 || n > 18) return;
@@ -419,6 +493,14 @@ export default function RoundScreen() {
               {recommendation.caddieQuip}
             </ThemedText>
 
+            <SpeakButton
+              state={speech.state}
+              onSpeak={hearTheBrief}
+              onStop={speech.stop}
+              label={speech.state === 'speaking' ? 'Stop' : 'Hear the brief'}
+              style={styles.speakButton}
+            />
+
             <View style={styles.yardageRow}>
               <View>
                 <ThemedText variant="stat" style={styles.yardage}>
@@ -497,6 +579,38 @@ export default function RoundScreen() {
                 </ThemedText>
               )}
             </View>
+          </Card>
+        )}
+
+        {/* ─── Ask your caddie ────────────────────────────────────────── */}
+        {profile && (
+          <Card
+            eyebrow="Ask your caddie"
+            title="Talk it through"
+            style={styles.block}>
+            <ThemedText variant="caption" tone="secondary">
+              Tap the mic and ask, then tap stop. Your caddie knows the hole, the
+              wind and the club it just gave you.
+            </ThemedText>
+
+            <MicButton
+              state={dictation.state}
+              onStart={() => void dictation.start()}
+              onStop={() => void dictation.stop()}
+              {...(asking ? { label: 'Thinking it over' } : {})}
+              style={styles.micButton}
+            />
+
+            {dictation.error && (
+              <ThemedText variant="caption" style={{ color: colors.destructive }}>
+                {dictation.error}
+              </ThemedText>
+            )}
+
+            {heard ? <VoiceTranscript text={heard} speaker="You said" /> : null}
+            {caddieAnswer ? (
+              <VoiceTranscript text={caddieAnswer} speaker="Your caddie" />
+            ) : null}
           </Card>
         )}
 
@@ -674,6 +788,8 @@ function Toggle({
 
 const styles = StyleSheet.create({
   block: { marginTop: Spacing.three },
+  speakButton: { marginTop: Spacing.two },
+  micButton: { marginTop: Spacing.two },
   rowBetween: {
     flexDirection: 'row',
     alignItems: 'center',

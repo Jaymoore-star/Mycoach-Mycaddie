@@ -10,6 +10,7 @@ import {
   type MutationCtx,
   type QueryCtx,
   internalAction,
+  internalMutation,
   internalQuery,
   mutation,
   query,
@@ -49,6 +50,17 @@ const RECENT_MESSAGES = 20;
 
 /** Long enough to describe a miss in detail, short enough to bound the cost. */
 const MAX_PROMPT_CHARS = 2000;
+
+/**
+ * How often the half-written reply is flushed to the database.
+ *
+ * Every flush is a write and a re-render on the device, so the model's own
+ * token rate is far too fast to follow directly. These two together give
+ * roughly six updates a second on a fast reply, which reads as writing rather
+ * than as either a stutter or a jump.
+ */
+const STREAM_FLUSH_MS = 150;
+const STREAM_FLUSH_CHARS = 24;
 
 const coachAgent = new Agent(components.agent, {
   name: 'Dominus Coach',
@@ -200,6 +212,14 @@ export const clearConversation = mutation({
     const thread = await findThread(ctx, args.profileId, coachIdFor(owned.profile));
     if (!thread) return null;
 
+    // A reply may be mid-flight; its draft would otherwise survive the wipe
+    // and reappear under an empty conversation.
+    const draft = await ctx.db
+      .query('coachDrafts')
+      .withIndex('by_thread', (q) => q.eq('threadId', thread.threadId))
+      .unique();
+    if (draft) await ctx.db.delete(draft._id);
+
     // Row first: once it is gone the thread is unreachable, so a failure to
     // schedule the component's cleanup cannot leave a conversation half-shown.
     await ctx.db.delete(thread._id);
@@ -341,6 +361,87 @@ export const getChatContext = internalQuery({
   },
 });
 
+// ─── The reply as it is being written ────────────────────────────────────────
+
+export const startDraft = internalMutation({
+  args: { threadId: v.string(), profileId: v.id('golferProfiles') },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query('coachDrafts')
+      .withIndex('by_thread', (q) => q.eq('threadId', args.threadId))
+      .unique();
+
+    // A draft left behind by an earlier failed generation would otherwise show
+    // up under the new question.
+    if (existing) await ctx.db.delete(existing._id);
+
+    await ctx.db.insert('coachDrafts', {
+      threadId: args.threadId,
+      profileId: args.profileId,
+      text: '',
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const updateDraft = internalMutation({
+  args: { threadId: v.string(), text: v.string() },
+  handler: async (ctx, args) => {
+    const draft = await ctx.db
+      .query('coachDrafts')
+      .withIndex('by_thread', (q) => q.eq('threadId', args.threadId))
+      .unique();
+    // Cleared mid-stream (the conversation was wiped) - nothing to write into.
+    if (!draft) return null;
+
+    await ctx.db.patch(draft._id, { text: args.text, updatedAt: Date.now() });
+    return null;
+  },
+});
+
+export const clearDraft = internalMutation({
+  args: { threadId: v.string() },
+  handler: async (ctx, args) => {
+    const draft = await ctx.db
+      .query('coachDrafts')
+      .withIndex('by_thread', (q) => q.eq('threadId', args.threadId))
+      .unique();
+    if (draft) await ctx.db.delete(draft._id);
+    return null;
+  },
+});
+
+/**
+ * The reply currently being written, if there is one.
+ *
+ * Separate from `listMessages` on purpose: that query is paginated and its
+ * pages would be invalidated on every token. This one is a single row, so the
+ * device re-renders one bubble rather than re-fetching the conversation six
+ * times a second.
+ *
+ * `null` means nothing is being written. A row with empty text means the
+ * request is away but no words have come back yet, which is what the thinking
+ * indicator is for.
+ */
+export const streamingReply = query({
+  args: { profileId: v.id('golferProfiles') },
+  handler: async (ctx, args): Promise<{ text: string } | null> => {
+    const owned = await ownedProfile(ctx, args.profileId);
+    if (!owned) return null;
+
+    const thread = await findThread(ctx, args.profileId, coachIdFor(owned.profile));
+    if (!thread) return null;
+
+    const draft = await ctx.db
+      .query('coachDrafts')
+      .withIndex('by_thread', (q) => q.eq('threadId', thread.threadId))
+      .unique();
+
+    return draft ? { text: draft.text } : null;
+  },
+});
+
 /** A visible reply when generation fails, so the screen is never left silent. */
 export const saveFailureNotice = internalAction({
   args: { threadId: v.string(), text: v.string() },
@@ -392,13 +493,52 @@ export const generateReply = internalAction({
       hasData,
     );
 
+    // Opened before the request so the screen has something to show from the
+    // first frame, rather than after the model's first token.
+    await ctx.runMutation(internal.coachChat.startDraft, {
+      threadId: args.threadId,
+      profileId: args.profileId,
+    });
+
     try {
-      await coachAgent.generateText(
+      const result = await coachAgent.streamText(
         ctx,
         { threadId: args.threadId },
         { promptMessageId: args.promptMessageId, system, temperature: 0.7 },
         { contextOptions: { recentMessages: RECENT_MESSAGES, excludeToolMessages: true } },
       );
+
+      // Deltas are not saved through the component: that would need
+      // `@convex-dev/agent/react` on the device to reassemble them, and that
+      // entry point pulls `ai` and `@ai-sdk/provider-utils` into the Metro
+      // bundle - the thing rule 2 in PLAN.md exists to prevent. Writing the
+      // running text into one row instead keeps the client on plain
+      // `useQuery`, and the app bundle free of the AI SDK.
+      let text = '';
+      let flushedAt = 0;
+      let flushedLength = 0;
+
+      for await (const chunk of result.textStream) {
+        text += chunk;
+
+        const now = Date.now();
+        if (
+          now - flushedAt >= STREAM_FLUSH_MS &&
+          text.length - flushedLength >= STREAM_FLUSH_CHARS
+        ) {
+          flushedAt = now;
+          flushedLength = text.length;
+          await ctx.runMutation(internal.coachChat.updateDraft, {
+            threadId: args.threadId,
+            text,
+          });
+        }
+      }
+
+      // Draining the stream is what makes the agent store the finished
+      // message. Without it a reply the golfer watched being written would
+      // vanish when the draft is cleared.
+      await result.consumeStream();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error('[coachChat.generateReply]', message);
@@ -411,6 +551,11 @@ export const generateReply = internalAction({
           ? 'Your coach is over the account rate limit right now - give it a minute and ask again.'
           : 'Your coach could not answer that one - please try again.',
       });
+    } finally {
+      // Always last, and always runs: the saved message has landed by now, so
+      // dropping the draft hands the bubble over without a gap. A draft left
+      // behind would sit under the conversation forever.
+      await ctx.runMutation(internal.coachChat.clearDraft, { threadId: args.threadId });
     }
 
     return null;

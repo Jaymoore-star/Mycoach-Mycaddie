@@ -34,7 +34,13 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow MyCoach / MyCaddie to use the microphone so you can talk to your caddie and log shots by voice."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

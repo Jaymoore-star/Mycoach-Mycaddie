@@ -353,6 +353,27 @@ export default defineSchema({
     .index('by_profile_and_coach', ['profileId', 'coachId'])
     .index('by_profile', ['profileId']),
 
+  /**
+   * The reply currently being written, one row per thread.
+   *
+   * The agent component only stores a message once it is complete, so without
+   * this a golfer waits several seconds at a "thinking" indicator and then has
+   * the whole answer appear at once. `generateReply` streams the model's
+   * output into here as it arrives and the chat screen renders it live, which
+   * is the difference between waiting and reading.
+   *
+   * Deleted the moment the finished message lands, so it is never a second
+   * copy of the conversation - only ever the few seconds in between.
+   */
+  coachDrafts: defineTable({
+    threadId: v.string(),
+    profileId: v.id('golferProfiles'),
+    text: v.string(),
+    updatedAt: v.number(),
+  })
+    .index('by_thread', ['threadId'])
+    .index('by_profile', ['profileId']),
+
   // Cached course data fetched from OpenGolfAPI - keyed by external course ID
   courseCache: defineTable({
     externalId: v.string(), // OpenGolfAPI course id
@@ -377,4 +398,23 @@ export default defineSchema({
     ),
     fetchedAt: v.string(), // ISO timestamp
   }).index('by_external_id', ['externalId']),
+
+  /**
+   * Synthesised speech, kept so the same sentence is only ever paid for once.
+   *
+   * The caddie repeats itself constantly - every par 4 opens with the same
+   * shape of brief - and a round would otherwise re-synthesise near-identical
+   * audio on every hole. Keyed by voice plus the exact text, so a change to
+   * either is simply a different clip rather than a stale one.
+   *
+   * Not owned by a golfer on purpose: the text is generated from public course
+   * data and the caddie's own script, holds nothing personal, and sharing the
+   * cache across accounts is the whole point.
+   */
+  voiceClips: defineTable({
+    key: v.string(), // `${voice}:${sha256(text)}`
+    voice: v.string(),
+    storageId: v.id('_storage'),
+    createdAt: v.number(),
+  }).index('by_key', ['key']),
 });

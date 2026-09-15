@@ -654,15 +654,26 @@ export const COURSE_LIBRARY: GolfCourse[] = normalizeCourses(RAW_COURSE_LIBRARY)
 /** Unrepaired data, for the integrity test to assert against. */
 export { RAW_COURSE_LIBRARY };
 
-export function searchCourses(query: string): GolfCourse[] {
+/**
+ * The matcher, over any list of courses.
+ *
+ * Split out from `searchCourses` so the golfer's own courses are searched by
+ * exactly the same rule as the built-in ones - a course picker that finds
+ * "Pebble" in one list but not the other is worse than no search at all.
+ */
+export function filterCourses(courses: GolfCourse[], query: string): GolfCourse[] {
   const q = query.toLowerCase().trim();
-  if (!q) return COURSE_LIBRARY;
-  return COURSE_LIBRARY.filter(
+  if (!q) return courses;
+  return courses.filter(
     (c) =>
       c.name.toLowerCase().includes(q) ||
       c.location.toLowerCase().includes(q) ||
       c.id.includes(q)
   );
+}
+
+export function searchCourses(query: string): GolfCourse[] {
+  return filterCourses(COURSE_LIBRARY, query);
 }
 
 export function getCourseById(id: string): GolfCourse | null {
