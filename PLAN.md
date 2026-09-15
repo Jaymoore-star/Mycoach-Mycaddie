@@ -59,10 +59,15 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 
 ## Resume here
 
-**Last worked: 14 September 2026. Steps 1-8 complete, plus skills tests, swing
-analysis, the coach chat, the voice features and custom courses; all pushed to
-`main` (`f347ff0`). Working tree clean. 415 tests pass, lint is clean, and both
-platform bundles build.**
+**Last worked: 15 September 2026. Steps 1-8 complete, plus skills tests, swing
+analysis, the coach chat, the voice features and custom courses. 512 tests
+pass, lint is clean, and both platform bundles build. Uncommitted: three
+dictation/composer fixes and six new function-test files — see below.**
+
+Every external integration was checked against the live deployment this
+session, not just mocked: the realtime token mint, TTS, Whisper, the caddie
+chat model and `gpt-4o` vision all answer. `OPENAI_API_KEY` **is** set on the
+deployment, so step 9's swing analysis is no longer blocked on a key.
 
 Every "coming next" card is gone - the app has no placeholder copy left. Of the
 five items that were listed as next up, three are done: voice, Convex function
@@ -228,12 +233,7 @@ intact: they keep their own name, rating and slope.
    unbuilt item from the original plan.
 2. **Real course data** - see the launch checklist. Needs an OpenGolfAPI key,
    and the launch checklist says deliberately not during development.
-3. **Convex function tests, the rest of them** - `profiles`, `rounds`, `shots`,
-   `launchMonitor`, `voice` and `customCourses` are covered (126 function
-   tests). `sessions`, `skillTests`, `streaks`, `analytics`, `swingVideos` and
-   `coachChat` are not. The harness is in `tests/helpers.ts` and the pattern is
-   set, so these are now cheap to add.
-4. **Green data for custom courses** - a custom course gets a deliberately
+3. **Green data for custom courses** - a custom course gets a deliberately
    neutral green, so the caddie's putt reading is generic there. Collecting
    break direction and severity per hole would fix it, at the cost of a much
    longer form.
@@ -272,9 +272,86 @@ npx expo export --platform android      # proves Metro can actually bundle it
 The export step is separate on purpose: `tsc` passing does **not** prove the
 bundle builds — that is how the `node:buffer` problem slipped through.
 
-Tests live in `tests/` and cover the pure logic in `convex/lib` (handicap,
-courses, caddie, curriculum) — 201 of them. Convex *functions* are still
-untested; that needs `convex-test` to mock auth and the database.
+Tests live in `tests/` — 512 of them. The `*.test.ts` files cover the pure
+logic in `convex/lib` (handicap, courses, caddie, curriculum); the
+`*.functions.test.ts` files run the Convex functions themselves against
+`convex-test`, which is the only way to cover the ownership checks and the
+server-side gates. **Every function module is now covered.**
+
+Two things about that harness are worth knowing before adding more:
+
+- `testApp()` registers the `@convex-dev/agent` component, via the `register`
+  helper the package ships at `@convex-dev/agent/test`. Without it every call
+  into the coach chat fails with `Component "agent" is not registered`.
+- `coachChat.sendMessage` schedules `generateReply`, which calls OpenAI. The
+  chat tests cancel the queued job immediately. Left pending it runs in the
+  background partway through some later test and prints a stack trace that
+  belongs to neither — and on a machine with `OPENAI_API_KEY` in the
+  environment it would not fail, it would spend real money running the suite.
+
+### Fixed on 15 September 2026
+
+Found by using the app on a phone and by writing the function tests, not by
+reading the code.
+
+- **Dictation committed an empty buffer.** `stop` decided whether to commit
+  from a tally of the audio it had *sent*. With server VAD the server discards
+  what is not speech, so the silence between the last word and the tap on stop
+  piled up on the client while the server's buffer was genuinely empty — and
+  the API said so, in red, under the composer. It now tracks whether the server
+  has an open speech turn (`speech_started` / `speech_stopped`), which is the
+  only reliable answer, and commits only when stopping mid-sentence.
+- **The last sentence could be lost.** With nothing to commit, `stop` closed
+  the socket immediately — including when VAD had committed a segment a moment
+  earlier and its transcript was still in flight. It now waits for any
+  transcript it is owed.
+- **Live dictation had no audio-session recovery.** `useDictation` releases
+  active players and retries the iOS session; `useLiveDictation` did neither,
+  so tapping the mic straight after "Hear it" threw `Session activation
+  failed`, which the hook read as the socket being unavailable — silently
+  dropping the golfer to non-live recording for the rest of the session. Both
+  paths now go through `claimRecordingSession` in `use-voice.ts`.
+- **The caddie's answer read itself out loud.** `askCaddie` always synthesised
+  the reply and the round screen played it the moment it arrived. Wrong twice
+  over: a golfer reading a reply on a quiet course does not want their phone
+  talking, and every question paid for a TTS clip whether or not anyone heard
+  it. Synthesis is now behind a `speak` argument, off by default, and the
+  answer carries a "Hear it" button like every other spoken line in the app.
+  The brief and the answer share one speech hook, so starting one stops the
+  other and only the button that started it reads "Stop".
+- **Two of the three voice screens could not be typed into.** The round
+  scorecard and a Launch Monitor session were speak-only: the transcript fired
+  the instant the golfer tapped stop, with no field to hold it. A quiet
+  clubhouse, a denied microphone permission or a misheard number left no way
+  through at all. Both now use `VoiceComposer` in `components/ui/voice-controls.tsx`
+  - a field you can type into *or* talk into, with the mic filling it rather
+  than firing, so what was heard can be read and corrected before it is acted
+  on. `MicButton` is gone; `MicCircle` and the composer replaced it, and
+  Ask Your Coach now shares the same mic rather than styling its own.
+- **The composer mic looked disabled.** It sat on `backgroundElement` with a
+  muted icon — the exact pair the send button uses to render *itself* disabled.
+  Now gold icon, gold ring, gold wash; the flat look is reserved for when the
+  mic really cannot be tapped. Send keeps the solid fill, so there is still
+  only one primary action in the composer.
+- **Dictating twice replaced the first transcript** (all three screens now,
+  via the shared composer). `onText` closed over
+  `typedBeforeSpeaking` from the render *before* the tap, because `toggleMic`
+  set the state and started the session in the same tick, and the session binds
+  its handlers once at start. So the prefix was always the previous value. It
+  is a ref now, read when the words arrive rather than when the closure was
+  made.
+
+Known and **not** fixed:
+
+- **`swingVideos.saveRecording` cannot clean up a rejected upload.** It deletes
+  the orphaned files and then throws — but a mutation is one transaction, so
+  the throw rolls the deletes back and both files survive. Covered by a test
+  that asserts the current behaviour so it fails the day it is fixed. Fixing it
+  needs two transactions: an action that checks ownership, runs a cleanup
+  mutation, and only then throws.
+- **`voice.realtimeToken` mints with `silence_duration_ms: 600`** while the
+  client's `session.update` overrides it to 350. It works, because the client
+  restates the session on open, but the two disagree.
 
 ### Fixed on 10 September 2026
 
@@ -314,8 +391,8 @@ Worth fixing there too if anyone is using it:
 - [x] 6. Caddie mode — **done**, 18-course library, WHS handicap, club recommendation
 - [x] 7. Launch Monitor + My Bag — **done**
 - [x] 8. Stats / Analytics / Handicap / Streak — **done**, plus Guide and My Coach
-- [~] 9. Swing video — **capture, library and storage done**; AI analysis needs an
-  OpenAI API key on the deployment
+- [x] 9. Swing video — **done**; the key is set and `gpt-4o` vision accepts the
+  frames. Not yet exercised end to end with a real clip on a device.
 - [x] Skills tests - **done**, graded server-side against each level's bar
 - [ ] 10. 3D swing visualiser (`three.js` → `expo-gl`) — deferred, highest risk
 
@@ -335,7 +412,8 @@ Worth fixing there too if anyone is using it:
 
 - [x] Convex account — done, project `mycoach-mycaddie-457e1`
 - [x] Google OAuth — done, `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` set on the deployment
-- [ ] OpenAI API key — for coach + swing analysis (needed at step 9)
+- [x] OpenAI API key — set on the deployment; verified live against every
+      endpoint the app uses (realtime, TTS, Whisper, chat, vision)
 - [ ] OpenGolfAPI key — optional; the built-in 18-course library covers step 6
 
 ## Launch checklist — do NOT do these during development
