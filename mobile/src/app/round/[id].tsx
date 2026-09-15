@@ -31,12 +31,11 @@ import { Card } from '@/components/ui/card';
 import { ChipRow, type ChipOption } from '@/components/ui/chip-row';
 import { Screen } from '@/components/ui/screen';
 import { ThemedText } from '@/components/ui/text';
-import { MicButton, SpeakButton, VoiceTranscript } from '@/components/ui/voice-controls';
+import { SpeakButton, VoiceComposer, VoiceTranscript } from '@/components/ui/voice-controls';
 import { FontSize, GOLD, Radius, Spacing } from '@/constants/theme';
 import { useCourse } from '@/hooks/use-courses';
 import { useTheme } from '@/hooks/use-theme';
-import { useLiveDictation } from '@/hooks/use-live-dictation';
-import { usePlayback, useSpeech, voiceErrorMessage } from '@/hooks/use-voice';
+import { useSpeech, voiceErrorMessage } from '@/hooks/use-voice';
 
 const NO_TENDENCIES: TendencyProfile = {
   dominantMiss: null,
@@ -220,8 +219,16 @@ export default function RoundScreen() {
 
   const coachId = profile?.coachId as CoachId | undefined;
   const speech = useSpeech(coachId);
-  const reply = usePlayback();
   const askCaddie = useAction(api.voice.askCaddie);
+
+  /**
+   * Which line the one speech hook is currently reading.
+   *
+   * The brief and the caddie's answer share it, so that starting one stops the
+   * other - a course is no place for two voices at once - and so only the
+   * button that started it shows "Stop".
+   */
+  const [speaking, setSpeaking] = useState<'brief' | 'answer' | null>(null);
 
   const [heard, setHeard] = useState('');
   const [caddieAnswer, setCaddieAnswer] = useState('');
@@ -257,8 +264,9 @@ export default function RoundScreen() {
             }
           : {}),
       });
+      // Written, not spoken. Asked for out loud with "Hear it" below it - see
+      // the `speak` argument on `askCaddie` for why it is not the default.
       setCaddieAnswer(answer.text);
-      await reply.play(answer.url);
     } catch (error) {
       Alert.alert(
         'Your caddie could not answer',
@@ -269,13 +277,21 @@ export default function RoundScreen() {
     }
   }
 
-  // `onFinal` only: the caddie is asked once, when the golfer stops talking.
-  // Firing on every word would send a fresh question per syllable.
-  const dictation = useLiveDictation({ onFinal: (text) => void handleQuestion(text) });
-
   function hearTheBrief() {
     if (!recommendation) return;
+    setSpeaking('brief');
     void speech.speak(buildShotBrief(recommendation, holeNumber, par));
+  }
+
+  function hearTheAnswer() {
+    if (!caddieAnswer) return;
+    setSpeaking('answer');
+    void speech.speak(caddieAnswer);
+  }
+
+  function stopSpeaking() {
+    speech.stop();
+    setSpeaking(null);
   }
 
   function goToHole(n: number) {
@@ -494,10 +510,14 @@ export default function RoundScreen() {
             </ThemedText>
 
             <SpeakButton
-              state={speech.state}
+              state={speaking === 'brief' ? speech.state : 'idle'}
               onSpeak={hearTheBrief}
-              onStop={speech.stop}
-              label={speech.state === 'speaking' ? 'Stop' : 'Hear the brief'}
+              onStop={stopSpeaking}
+              label={
+                speaking === 'brief' && speech.state === 'speaking'
+                  ? 'Stop'
+                  : 'Hear the brief'
+              }
               style={styles.speakButton}
             />
 
@@ -589,27 +609,28 @@ export default function RoundScreen() {
             title="Talk it through"
             style={styles.block}>
             <ThemedText variant="caption" tone="secondary">
-              Tap the mic and ask, then tap stop. Your caddie knows the hole, the
+              Type it, or tap the mic and say it. Your caddie knows the hole, the
               wind and the club it just gave you.
             </ThemedText>
 
-            <MicButton
-              state={dictation.state}
-              onStart={() => void dictation.start()}
-              onStop={() => void dictation.stop()}
-              {...(asking ? { label: 'Thinking it over' } : {})}
-              style={styles.micButton}
+            <VoiceComposer
+              placeholder="Ask your caddie about this shot"
+              submitLabel={asking ? 'Thinking it over' : 'Ask'}
+              onSubmit={(text) => void handleQuestion(text)}
+              busy={asking}
             />
-
-            {dictation.error && (
-              <ThemedText variant="caption" style={{ color: colors.destructive }}>
-                {dictation.error}
-              </ThemedText>
-            )}
 
             {heard ? <VoiceTranscript text={heard} speaker="You said" /> : null}
             {caddieAnswer ? (
-              <VoiceTranscript text={caddieAnswer} speaker="Your caddie" />
+              <>
+                <VoiceTranscript text={caddieAnswer} speaker="Your caddie" />
+                <SpeakButton
+                  state={speaking === 'answer' ? speech.state : 'idle'}
+                  onSpeak={hearTheAnswer}
+                  onStop={stopSpeaking}
+                  style={styles.speakButton}
+                />
+              </>
             ) : null}
           </Card>
         )}
@@ -789,7 +810,6 @@ function Toggle({
 const styles = StyleSheet.create({
   block: { marginTop: Spacing.three },
   speakButton: { marginTop: Spacing.two },
-  micButton: { marginTop: Spacing.two },
   rowBetween: {
     flexDirection: 'row',
     alignItems: 'center',

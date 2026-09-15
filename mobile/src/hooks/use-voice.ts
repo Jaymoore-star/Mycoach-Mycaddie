@@ -22,7 +22,6 @@ import {
   setIsAudioActiveAsync,
   useAudioRecorder,
   type AudioPlayer,
-  type AudioRecorder,
 } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -70,7 +69,14 @@ function silenceAll() {
 }
 
 /**
- * Prepares the recorder, forcing the audio session down first if it has to.
+ * Hands the microphone the audio session, forcing it down first if it has to.
+ *
+ * Every path that opens the microphone goes through here - the one-shot
+ * recorder and the live stream both - because the session is one thing for the
+ * whole app and the failure is the same for either:
+ *
+ *   AudioRecordingException: Failed to configure audio session:
+ *   Session activation failed
  *
  * Releasing every player is usually enough, but iOS does not always hand the
  * session back on the same turn - and something outside the app (a call just
@@ -78,22 +84,40 @@ function silenceAll() {
  * deactivate the session explicitly and ask again. One retry: if the second
  * attempt fails as well, something is genuinely holding the microphone and the
  * golfer needs to be told rather than kept waiting.
+ *
+ * `open` is whatever actually claims the microphone - preparing the recorder,
+ * or starting the stream - and is retried with the session, since on iOS it is
+ * the call that trips over the old one.
  */
-async function prepareRecorder(recorder: AudioRecorder) {
+export async function claimRecordingSession(open: () => Promise<unknown>) {
+  // Anything still playing owns the iOS audio session, and the switch to
+  // play-and-record fails while it does. This is the ordinary case, not an
+  // edge one: tapping "Hear it" and then reaching for the mic.
+  silenceAll();
+
   try {
-    await recorder.prepareToRecordAsync();
+    // Recording and playback want opposite audio session settings on iOS;
+    // switching here rather than once at startup means a screen that both
+    // speaks and listens does not have to fight over the session.
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+    await open();
   } catch (first) {
     try {
       await setIsAudioActiveAsync(false);
       await setIsAudioActiveAsync(true);
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      await recorder.prepareToRecordAsync();
+      await open();
     } catch {
       // Report the original failure: the retry's is a symptom of the same
       // thing and says less about what actually went wrong.
       throw first;
     }
   }
+}
+
+/** True of the audio-session failures that a golfer can actually act on. */
+export function isAudioSessionFailure(raw: string): boolean {
+  return /audio session|session activation|AudioRecordingException/i.test(raw);
 }
 
 /** A player that is registered, so the microphone can always find it. */
@@ -415,16 +439,7 @@ export function useDictation(onTranscript: (text: string) => void) {
         return;
       }
 
-      // Anything still playing owns the iOS audio session, and the switch to
-      // play-and-record fails while it does. This is the ordinary case, not an
-      // edge one: tapping "Hear it" and then reaching for the mic.
-      silenceAll();
-
-      // Recording and playback want opposite audio session settings on iOS;
-      // switching here rather than once at startup means a screen that both
-      // speaks and listens does not have to fight over the session.
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      await prepareRecorder(recorder);
+      await claimRecordingSession(() => recorder.prepareToRecordAsync());
       recorder.record();
 
       startedAt.current = Date.now();
@@ -442,7 +457,7 @@ export function useDictation(onTranscript: (text: string) => void) {
       // nothing and tells us nothing they could act on.
       const raw = messageOf(err, '');
       setError(
-        /audio session|session activation|AudioRecordingException/i.test(raw)
+        isAudioSessionFailure(raw)
           ? 'Something else is using the microphone. Close other audio apps and try again.'
           : messageOf(err, 'Could not start recording.'),
       );

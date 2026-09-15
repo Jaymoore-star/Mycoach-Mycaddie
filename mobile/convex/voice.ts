@@ -576,8 +576,18 @@ export const askCaddie = action({
     primaryClub: v.optional(v.string()),
     adjustedYardage: v.optional(v.number()),
     aimAdjustment: v.optional(v.string()),
+    /**
+     * Synthesise the answer as well as writing it.
+     *
+     * Off by default, and deliberately so. The answer used to be spoken the
+     * moment it arrived, which is wrong twice over: a golfer reading a reply on
+     * a quiet course does not want their phone talking, and every question paid
+     * for a TTS clip whether or not anyone heard it. The screen offers "Hear
+     * it" instead, which goes through `speak` and its cache.
+     */
+    speak: v.optional(v.boolean()),
   },
-  handler: async (ctx, args): Promise<{ text: string; url: string }> => {
+  handler: async (ctx, args): Promise<{ text: string; url: string | null }> => {
     await requireUser(ctx);
     const apiKey = requireApiKey();
 
@@ -613,6 +623,8 @@ export const askCaddie = action({
     // asks for, so a sensible answer is never cut off mid-word.
     const text =
       (await chat(apiKey, system, transcript, 120, 0.6)) || 'Commit to the shot and swing.';
+
+    if (!args.speak) return { text, url: null };
 
     const { url } = await synthesise(ctx, text, speaker.coachId);
     return { text, url };

@@ -13,10 +13,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { ThemedText } from '@/components/ui/text';
-import { MicButton, SpeakButton, VoiceTranscript } from '@/components/ui/voice-controls';
+import { SpeakButton, VoiceComposer, VoiceTranscript } from '@/components/ui/voice-controls';
 import { FontSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useLiveDictation } from '@/hooks/use-live-dictation';
 import { usePlayback, voiceErrorMessage } from '@/hooks/use-voice';
 
 /** The R10 metrics worth typing in by hand. */
@@ -94,10 +93,6 @@ export default function LaunchSessionScreen() {
     },
     [parseShot],
   );
-
-  // The shot is read once, from the finished sentence - a half-heard "one
-  // forty" would otherwise fill the form in before "five" arrived.
-  const dictation = useLiveDictation({ onFinal: (text) => void handleSpokenShot(text) });
 
   function clearSpoken() {
     setHeard('');
@@ -240,23 +235,17 @@ export default function LaunchSessionScreen() {
         {/* ─── Metric entry ───────────────────────────────────────────── */}
         <Card eyebrow="Add a shot" title={club} style={styles.block}>
           <ThemedText variant="caption" tone="secondary">
-            Tap the mic and say it - &ldquo;seven iron, one forty five, little fade,
-            caught it clean&rdquo; - then tap stop. Or type the numbers in below.
+            Describe the shot and it fills the form - &ldquo;seven iron, one forty
+            five, little fade, caught it clean&rdquo;. Type it or tap the mic. Or
+            skip it and enter the numbers below.
           </ThemedText>
 
-          <MicButton
-            state={dictation.state}
-            onStart={() => void dictation.start()}
-            onStop={() => void dictation.stop()}
-            {...(parsing ? { label: 'Reading the shot' } : {})}
-            style={styles.micButton}
+          <VoiceComposer
+            placeholder="Describe the shot"
+            submitLabel={parsing ? 'Reading the shot' : 'Read it'}
+            onSubmit={(text) => void handleSpokenShot(text)}
+            busy={parsing}
           />
-
-          {dictation.error && (
-            <ThemedText variant="caption" style={{ color: colors.destructive }}>
-              {dictation.error}
-            </ThemedText>
-          )}
 
           {heard ? (
             <View style={styles.heard}>

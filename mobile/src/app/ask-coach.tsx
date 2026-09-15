@@ -1,8 +1,8 @@
 import { usePaginatedQuery, useMutation, useQuery } from 'convex/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ArrowUp, Mic, RotateCcw, Square, Volume2, X } from 'lucide-react-native';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowUp, RotateCcw, Square, Volume2, X } from 'lucide-react-native';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +22,7 @@ import type { CoachId } from '@/convex/lib/coachLevels';
 import { RichText } from '@/components/ui/rich-text';
 import { ThemedText } from '@/components/ui/text';
 import { TypingDots } from '@/components/ui/typing-dots';
+import { MicCircle } from '@/components/ui/voice-controls';
 import { getCoachById } from '@/constants/coaches';
 import { FontSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -110,18 +111,23 @@ export default function AskCoachScreen() {
    * update. Holding the prefix separately means the golfer can type half a
    * question, speak the rest, and keep both.
    */
-  const [typedBeforeSpeaking, setTypedBeforeSpeaking] = useState('');
+  // A ref rather than state, and the distinction is the whole bug it fixes.
+  // `toggleMic` sets this and starts the session in the same tick, so a state
+  // setter would not have landed yet - and the session binds its handlers once,
+  // at start, so `onText` kept the value from the render *before* the tap for
+  // the rest of the session. Dictating twice without sending therefore replaced
+  // the first transcript instead of continuing it. A ref is read when the words
+  // arrive, not when the closure was made.
+  const typedBeforeSpeaking = useRef('');
 
   // Dictating into the composer rather than sending: what a coach is asked
   // should be read back before it goes, and a misheard question wastes a turn
   // of the conversation.
   const dictation = useLiveDictation({
-    onText: useCallback(
-      (text: string) => {
-        setDraft(typedBeforeSpeaking.trim() ? `${typedBeforeSpeaking.trim()} ${text}` : text);
-      },
-      [typedBeforeSpeaking],
-    ),
+    onText: useCallback((text: string) => {
+      const prefix = typedBeforeSpeaking.current.trim();
+      setDraft(prefix ? `${prefix} ${text}` : text);
+    }, []),
   });
 
   function toggleMic() {
@@ -129,7 +135,9 @@ export default function AskCoachScreen() {
       void dictation.stop();
       return;
     }
-    setTypedBeforeSpeaking(draft);
+    // Whatever is in the composer now - typed, or dictated a moment ago and
+    // not yet sent - is what the new words get added to.
+    typedBeforeSpeaking.current = draft;
     void dictation.start();
   }
 
@@ -352,36 +360,12 @@ export default function AskCoachScreen() {
               { backgroundColor: colors.input, color: colors.text, borderColor: colors.border },
             ]}
           />
-          <Pressable
+          <MicCircle
+            state={dictation.state}
+            isRecording={dictation.isRecording}
             onPress={toggleMic}
-            disabled={dictation.state === 'transcribing' || dictation.state === 'denied'}
-            accessibilityRole="button"
-            accessibilityLabel={
-              dictation.isRecording ? 'Stop dictating' : 'Dictate your question'
-            }
-            accessibilityState={{
-              busy: dictation.state === 'transcribing' || dictation.state === 'connecting',
-            }}
-            style={[
-              styles.mic,
-              {
-                backgroundColor: dictation.isRecording
-                  ? colors.destructive
-                  : colors.backgroundElement,
-              },
-            ]}>
-            {dictation.state === 'transcribing' || dictation.state === 'connecting' ? (
-              <ActivityIndicator
-                size="small"
-                color={dictation.isRecording ? colors.primaryText : colors.textMuted}
-              />
-            ) : dictation.isRecording ? (
-              // A stop square while recording: the same tap now ends it.
-              <Square size={16} color={colors.primaryText} fill={colors.primaryText} />
-            ) : (
-              <Mic size={20} color={colors.textMuted} />
-            )}
-          </Pressable>
+            label="Dictate your question"
+          />
           <Pressable
             onPress={() => send(draft)}
             disabled={draft.trim().length === 0 || sending}
@@ -628,13 +612,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  mic: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   speakRow: {
     flexDirection: 'row',

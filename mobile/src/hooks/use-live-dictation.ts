@@ -13,17 +13,18 @@
  * interaction does not change either way: tap to start, tap to stop.
  */
 import { useAction } from 'convex/react';
-import {
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioStream,
-} from 'expo-audio';
+import { requestRecordingPermissionsAsync, setAudioModeAsync, useAudioStream } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '@/convex/_generated/api';
 import { encodeBase64 } from '@/lib/base64';
 
-import { useDictation, voiceErrorMessage, type DictationState } from './use-voice';
+import {
+  claimRecordingSession,
+  useDictation,
+  voiceErrorMessage,
+  type DictationState,
+} from './use-voice';
 
 /** What the realtime transcription session expects: 24kHz mono PCM16. */
 const SAMPLE_RATE = 24_000;
@@ -76,13 +77,15 @@ const FINAL_SEGMENT_TIMEOUT_MS = 1500;
 const MIN_COMMIT_MS = 150;
 
 /**
- * Assumed bytes per queued buffer, for the uncommitted-audio tally.
+ * Errors worth showing a golfer.
  *
- * The backlog holds base64 strings rather than the original buffers, so the
- * exact size is gone by then. It only feeds the "is there a tail worth
- * committing" check, where being roughly right is enough.
+ * A commit that races the server's own turn-taking is harmless - the words
+ * still arrive - but the API says so out loud, and it used to land in red
+ * under the composer as if something had broken. The race is now rare rather
+ * than routine, but it cannot be closed entirely: `stop` decides from events
+ * that were true a network hop ago.
  */
-const CHUNK_BYTES_ESTIMATE = 4800;
+const BENIGN_ERROR = /buffer too small|commit_empty|buffer is empty/i;
 
 /**
  * React Native's WebSocket takes a third argument that the DOM one does not.
@@ -146,19 +149,30 @@ export function useLiveDictation(options: LiveDictationOptions) {
   /** Resolves the wait in `stop` as soon as the last segment comes back. */
   const finalSegment = useRef<(() => void) | null>(null);
   /**
-   * Audio appended since the server last took a turn, in milliseconds.
+   * True while the server has an unfinished speech turn.
    *
-   * Server VAD commits the buffer itself at every pause, so by the time the
-   * golfer taps stop it is usually already empty - and committing an empty
-   * buffer is an error the API reports out loud:
+   * This is the only reliable answer to "is there anything in the buffer to
+   * commit". Counting the audio *sent* is not: with server VAD the server
+   * discards what is not speech, so the silence between the last word and the
+   * tap on stop accumulates on the client and nowhere else. Committing on the
+   * strength of that tally is what produced
    *
    *   buffer too small. Expected at least 100ms of audio, but buffer only
    *   has 0.00ms of audio.
    *
-   * Counting what has gone in since the last turn is how `stop` knows whether
-   * there is a tail worth committing or nothing to do.
+   * every time the golfer paused before stopping. The server's own
+   * `speech_started` / `speech_stopped` events say what it actually holds.
    */
+  const speechOpen = useRef(false);
+  /** Audio appended since the current speech turn began, in milliseconds. */
   const uncommittedMs = useRef(0);
+  /**
+   * True once the server has taken a buffer whose transcript has not arrived.
+   *
+   * `stop` waits on this rather than closing immediately, so the last sentence
+   * is not lost when VAD commits it a moment before the golfer taps stop.
+   */
+  const pendingTranscript = useRef(false);
   const [live, setLive] = useState(false);
 
   // The fallback path. Its recorder is only ever started if the socket fails,
@@ -283,6 +297,7 @@ export function useLiveDictation(options: LiveDictationOptions) {
           }
           partial.current = '';
           uncommittedMs.current = 0;
+          pendingTranscript.current = false;
           emit();
 
           // `stop` may be waiting on exactly this, rather than on a timer.
@@ -292,20 +307,33 @@ export function useLiveDictation(options: LiveDictationOptions) {
         }
 
         case 'input_audio_buffer.speech_started':
+          // A turn is open, and the buffer fills from here.
+          speechOpen.current = true;
+          uncommittedMs.current = 0;
           if (alive.current) setState('recording');
           break;
 
         case 'input_audio_buffer.committed':
         case 'input_audio_buffer.speech_stopped':
-          // The server has taken the buffer; there is nothing left to commit.
+          // The server has taken the buffer; there is nothing left to commit,
+          // and a transcript for it is now on its way.
+          speechOpen.current = false;
           uncommittedMs.current = 0;
+          pendingTranscript.current = true;
           break;
 
-        case 'error':
+        case 'error': {
           // Not fatal on its own: the session usually keeps going. Recorded
-          // so a golfer whose words stop appearing is not left guessing.
-          if (alive.current) setError(event.error?.message ?? 'Live transcription hiccuped.');
+          // so a golfer whose words stop appearing is not left guessing - but
+          // a lost commit race is not something to put in front of them.
+          const message = event.error?.message ?? 'Live transcription hiccuped.';
+          if (BENIGN_ERROR.test(message)) {
+            console.warn('[useLiveDictation]', message);
+            break;
+          }
+          if (alive.current) setError(message);
           break;
+        }
       }
     },
     [emit],
@@ -321,7 +349,9 @@ export function useLiveDictation(options: LiveDictationOptions) {
     partial.current = '';
     queued.current = [];
     ready.current = false;
+    speechOpen.current = false;
     uncommittedMs.current = 0;
+    pendingTranscript.current = false;
     setState('connecting');
 
     try {
@@ -338,8 +368,27 @@ export function useLiveDictation(options: LiveDictationOptions) {
       // take a second or so, and a golfer starts talking when they tap, not
       // when the network is ready - so the audio is captured from the tap and
       // queued until there is somewhere to send it.
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      await stream.start();
+      //
+      // Through the shared claim, not a bare `setAudioModeAsync`: a coach reply
+      // played with "Hear it" still owns the iOS audio session, and starting
+      // the stream under it fails with "Session activation failed". This path
+      // used to take that as the socket being unavailable and drop to a plain
+      // recording, so tapping the mic straight after listening silently cost
+      // the golfer live transcription.
+      //
+      // The stop inside is what makes the retry worth anything. `claim` runs
+      // this twice, and unlike preparing a recorder, starting a stream is not
+      // idempotent - a first attempt that got far enough to take the microphone
+      // before failing would leave it held, and the second attempt would fail
+      // on that instead. On the first pass there is nothing to stop.
+      await claimRecordingSession(async () => {
+        try {
+          stream.stop();
+        } catch {
+          // Not started - which is the ordinary case on the first attempt.
+        }
+        await stream.start();
+      });
       if (alive.current) setState('recording');
 
       const { token, model } = await mintToken();
@@ -392,9 +441,10 @@ export function useLiveDictation(options: LiveDictationOptions) {
       queued.current = [];
       ready.current = true;
 
+      // No tally for these: the server has not opened a turn on them yet, and
+      // `speech_started` is what starts counting.
       for (const audio of backlog) {
         open.send(JSON.stringify({ type: 'input_audio_buffer.append', audio }));
-        uncommittedMs.current += (CHUNK_BYTES_ESTIMATE / 2 / SAMPLE_RATE) * 1000;
       }
 
       if (alive.current) setLive(true);
@@ -434,34 +484,41 @@ export function useLiveDictation(options: LiveDictationOptions) {
     }
 
     const open = socket.current;
-    const hasTail = uncommittedMs.current >= MIN_COMMIT_MS;
+    const usable = !!open && open.readyState === 1;
 
-    if (open && open.readyState === 1 && hasTail) {
-      if (alive.current) setState('transcribing');
-
-      // Only commit when there is really something there. Server VAD has
-      // usually taken the buffer already at the last pause, and committing an
-      // empty one is an error the API reports back.
-      const arrived = new Promise<void>((resolve) => {
-        finalSegment.current = resolve;
-        setTimeout(resolve, FINAL_SEGMENT_TIMEOUT_MS);
-      });
-
+    // Commit only mid-sentence - when the server has a turn open and enough of
+    // it has gone in to clear the 100ms floor. Stopping during a pause needs no
+    // commit at all: VAD took that buffer at the pause, and everything since is
+    // silence the server discarded rather than kept.
+    if (usable && speechOpen.current && uncommittedMs.current >= MIN_COMMIT_MS) {
       try {
-        open.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+        open!.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+        pendingTranscript.current = true;
       } catch {
         // Closing anyway.
       }
+    }
+
+    // Wait whenever a transcript is owed, whether this commit asked for it or
+    // VAD did a moment before the tap. Closing the socket while one is in
+    // flight is how the last sentence used to go missing.
+    if (usable && pendingTranscript.current) {
+      if (alive.current) setState('transcribing');
 
       // Waits on the transcript rather than on a fixed timer, so a short tail
       // comes back immediately instead of always costing the worst case.
-      await arrived;
+      await new Promise<void>((resolve) => {
+        finalSegment.current = resolve;
+        setTimeout(resolve, FINAL_SEGMENT_TIMEOUT_MS);
+      });
       finalSegment.current = null;
     }
 
     closeSocket();
     ready.current = false;
+    speechOpen.current = false;
     uncommittedMs.current = 0;
+    pendingTranscript.current = false;
     await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
 
     if (!alive.current) return;
