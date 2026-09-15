@@ -59,17 +59,20 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 
 ## Resume here
 
-**Last worked: 12 September 2026. Steps 1-8 complete, plus skills tests, swing
-analysis and the coach chat; all pushed to `main` (`b0ac575`). Working tree
-clean. 247 tests pass, lint is clean, and both platform bundles build.**
+**Last worked: 14 September 2026. Steps 1-8 complete, plus skills tests, swing
+analysis, the coach chat, the voice features and custom courses. 407 tests
+pass, lint is clean, and both platform bundles build. The working tree holds
+the voice, custom-course and Convex-function-test work, uncommitted for
+review.**
 
-Every "coming next" card is gone - the app has no placeholder copy left. What
-remains is new scope, not unfinished work.
+Every "coming next" card is gone - the app has no placeholder copy left. Of the
+five items that were listed as next up, three are done: voice, Convex function
+tests, and custom courses. What remains is the 3D visualiser and real course
+data, both deliberately deferred.
 
-**Not yet verified on a device:** the chat keyboard behaviour and the coach
-bubble's clearance above the tab bar. Both were reasoned to a root cause and
-build clean, but nobody has looked at them rendered on a phone. Check My Caddie
-and My Swing first - they have the most going on at the bottom of the screen.
+**Not yet verified on a device:** the coach bubble's clearance above the tab
+bar, and the new My Courses form on a small screen. The chat keyboard and the
+spoken caddie have now been used on a phone.
 
 ### Start the app
 
@@ -109,24 +112,127 @@ floating coach bubble on Home (bottom right). It opens as a modal, so the bubble
 can present it over whatever the golfer was looking at.
 
 Backend: `profiles`, `sessions`, `rounds`, `clubs`, `launchMonitor`, `shots`,
-`skillTests`, `streaks`, `analytics`, `swingVideos`, `coachChat`, `auth`, plus
-`devTools` (internal only). Shared pure logic in `convex/lib`: `curriculum`,
-`caddie`, `courses`, `courseIntegrity`, `handicap`, `streaks`, `skillTests`,
-`shotInsight`, `strokesGained`, `program`, `bag`, `coachLevels`,
-`coachPersona`, `coachContext`.
+`skillTests`, `streaks`, `analytics`, `swingVideos`, `coachChat`, `voice`,
+`customCourses`, `auth`, plus `devTools` (internal only). Shared pure logic in
+`convex/lib`: `curriculum`, `caddie`, `courses`, `courseIntegrity`, `handicap`,
+`streaks`, `skillTests`, `shotInsight`, `strokesGained`, `program`, `bag`,
+`coachLevels`, `coachPersona`, `coachContext`, `voice`, `customCourses`,
+`markdown`.
+
+### Voice
+
+Tap the mic, speak, tap stop. The words appear as they are said.
+
+`voiceToken.ts` **was** portable after all - an earlier note here said it was
+not. What could not be ported is the web app's *transport*: React Native has no
+`RTCPeerConnection`. The same realtime API is reachable over a plain WebSocket,
+which React Native does have, and `expo-audio`'s `useAudioStream` supplies the
+raw PCM16 to feed it. `voice.realtimeToken` mints a short-lived session secret
+so the key never reaches the device.
+
+It posts to `/v1/realtime/client_secrets`, and the token comes back as a
+top-level `value`. Not `/v1/realtime/sessions` - that is the beta endpoint the
+reference app used and it now answers `Invalid URL`, which is what the first
+attempt at this shipped with. The socket URL carries no `?intent=transcription`
+for the same reason. Verified against the real API with a throwaway
+`devTools` action rather than from the docs alone; the transcription model is
+tried from a list, because which ones an account may use varies and a rejected
+model returns a 400 indistinguishable from a broken endpoint.
+
+`src/hooks/use-live-dictation.ts` owns that socket, and degrades on its own: if
+the token cannot be minted, the socket will not open, or it drops mid-sentence,
+it falls back to `useDictation` - record the whole thing, upload, transcribe
+with Whisper, delete the audio in the same call. The golfer's interaction is
+identical either way; only the live typing is lost. The banner above the
+composer says which of the two is running.
+
+`src/lib/base64.ts` is hand-rolled because React Native has no `Buffer` and
+`btoa` is not reliably present, and this runs on every microphone buffer.
+
+Three things decide how quickly words appear, and all three were wrong at
+first:
+
+- **`silence_duration_ms`**. Transcription is turn-based, so this number *is*
+  the delay between saying a thing and seeing it. 600ms suits a conversational
+  agent that must be sure you have finished; dictation wants 350ms.
+- **When the microphone opens.** Capture now starts on the tap, and audio is
+  queued until the token and handshake are done - otherwise the first second
+  of every question was dropped on the floor.
+- **What `stop` waits for.** It waits on the final transcript event, capped at
+  1.5s, rather than sleeping a flat 900ms every time.
+
+`stop` only sends `input_audio_buffer.commit` when at least 150ms of audio has
+gone in since the server last took a turn. Server VAD usually commits at the
+last pause, so an unconditional commit hits an empty buffer and the API says
+so out loud: `buffer too small. Expected at least 100ms of audio`.
+
+The header of `convex/voice.ts` records why the Hercules gateway was dropped
+for direct OpenAI calls.
+
+The spoken caddie is mostly *not* a model. `buildCaddieRecommendation` has
+already decided the club and the yardage, so `buildShotBrief` in
+`convex/lib/voice.ts` reads that aloud - deterministic, free, and incapable of
+contradicting the card on screen. The model is only used to answer a question
+(`askCaddie`) and to pull fields out of a spoken shot (`parseShot`).
+
+Synthesised clips are cached in `voiceClips`, keyed by voice plus a hash of the
+text, so a round does not pay for the same sentence eighteen times. Every
+coach's `ttsVoice` was already on the persona; the speaking style is derived
+from it rather than written out a second time.
+
+Where it is: the mic and "Hear the brief" on the round scorecard, the mic and
+"Play debrief" on a Launch Monitor session, and the mic plus a "Hear it" on
+every coach reply in Ask Your Coach.
+
+### Streaming coach replies
+
+The reply is written into the chat as the model produces it, rather than
+appearing whole after a wait. `generateReply` uses `coachAgent.streamText` and
+flushes the running text into a `coachDrafts` row - one row per thread, cleared
+the moment the finished message lands.
+
+It does *not* use the agent component's own delta streaming, because
+reassembling those on the device needs `@convex-dev/agent/react`, and that
+entry point pulls `ai` and `@ai-sdk/provider-utils` into the Metro bundle -
+exactly what rule 2 below exists to prevent. A single row read with plain
+`useQuery` costs nothing and keeps the app bundle free of the AI SDK. It is
+also why the draft is its own query rather than part of `listMessages`: that
+one is paginated, and a token arriving would invalidate every page several
+times a second.
+
+Flush rate is in `STREAM_FLUSH_MS` / `STREAM_FLUSH_CHARS` - about six updates a
+second, which reads as writing rather than as a stutter or a jump.
+
+### Custom courses
+
+`customCourses` had a table and nothing else. `convex/customCourses.ts` is the
+CRUD, validated server-side because a bad slope rating silently bends the WHS
+differential for every round played there. `convex/lib/customCourses.ts` holds
+the validation and `toGolfCourse`, which converts a row into the same
+`GolfCourse` the caddie, scorecard and handicap already take - so nothing
+downstream needed a branch. Custom ids carry a `custom:` prefix, since they
+share one namespace with library ids on `roundScores.courseId`.
+
+The form is at `/courses`, reached from My Caddie. It opens on a real par-72
+card rather than eighteen blanks. Deleting a course leaves finished rounds
+intact: they keep their own name, rating and slope.
 
 ### Next up
 
 1. **Step 10, the 3D swing visualiser** - `@react-three/fiber` on `expo-gl`.
-   Highest risk, lowest value; everything ships without it.
-2. **Real course data** - see the launch checklist.
-3. **Convex function tests** - `convex-test` to mock auth and the database.
-   The pure logic in `convex/lib` is covered (247 tests); the functions are not.
-4. **Voice features** - `reference/convex/voice.ts`, `voiceToken.ts` and
-   `launchMonitorVoice.ts` are unported. The web app had a voice-driven
-   on-course caddie. The OpenAI key is set, so nothing blocks this.
-5. **Custom courses** - the `customCourses` table and schema exist but there is
-   no UI, so only the 18 built-in courses are selectable.
+   Highest risk, lowest value; everything ships without it. Still the only
+   unbuilt item from the original plan.
+2. **Real course data** - see the launch checklist. Needs an OpenGolfAPI key,
+   and the launch checklist says deliberately not during development.
+3. **Convex function tests, the rest of them** - `profiles`, `rounds`, `shots`,
+   `launchMonitor`, `voice` and `customCourses` are covered (126 function
+   tests). `sessions`, `skillTests`, `streaks`, `analytics`, `swingVideos` and
+   `coachChat` are not. The harness is in `tests/helpers.ts` and the pattern is
+   set, so these are now cheap to add.
+4. **Green data for custom courses** - a custom course gets a deliberately
+   neutral green, so the caddie's putt reading is generic there. Collecting
+   break direction and severity per hole would fix it, at the cost of a much
+   longer form.
 
 Charts are drawn with `react-native-svg` in `src/components/ui/chart.tsx`
 (`Sparkline`, `BarRow`, `CalendarHeat`, `HeroStat`) - single series, one hue,
