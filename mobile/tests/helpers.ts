@@ -10,6 +10,7 @@
  * session. So signing a test in is a matter of handing `withIdentity` a
  * subject in that shape; there is no need to run the real sign-in flow.
  */
+import { register as registerAgent } from '@convex-dev/agent/test';
 import { convexTest } from 'convex-test';
 
 import { api } from '../convex/_generated/api';
@@ -24,7 +25,16 @@ import schema from '../convex/schema';
 export const modules = import.meta.glob('../convex/**/*.ts');
 
 export function testApp() {
-  return convexTest(schema, modules);
+  const t = convexTest(schema, modules);
+
+  // The coach chat keeps its messages in the `@convex-dev/agent` component,
+  // mounted in `convex.config.ts`. A component is a separate deployment as far
+  // as the test runtime is concerned, so it has to be registered by hand or any
+  // call into it fails with "Component \"agent\" is not registered". The
+  // package ships the helper for exactly this.
+  registerAgent(t);
+
+  return t;
 }
 
 export type TestConvex = ReturnType<typeof testApp>;
