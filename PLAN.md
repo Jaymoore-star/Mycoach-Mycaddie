@@ -59,10 +59,28 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 
 ## Resume here
 
-**Last worked: 15 September 2026. Steps 1-8 complete, plus skills tests, swing
-analysis, the coach chat, the voice features and custom courses. 512 tests
-pass, lint is clean, and both platform bundles build. Uncommitted: three
-dictation/composer fixes and six new function-test files — see below.**
+**Last worked: 18 September 2026. The app is feature-complete and
+release-shaped: real brand assets, valid native config, an EAS build profile,
+course data from published scorecards, one account per email, and a seeded demo
+golfer live on prod. 547 tests pass, lint is clean, and both bundles export.
+Uncommitted — see "Release prep" below.**
+
+**Next action is Jeet's:** `npx eas-cli@latest build -p android --profile
+preview`, then walk the app on the phone.
+
+Prod (`precise-wren-85`) is provisioned and proven: all five environment
+variables correct, a real sign-in with clean logs,
+`devTools:probeIntegrations` green on every OpenAI endpoint, and
+`demo@dominusgolf.com` seeded - 10.4 index, 89.9 average, 12 rounds, a 38-day
+streak, 174 range shots.
+
+**Still unexercised on a device: recording a swing.** That is the path the
+missing `expo-image-picker` config would have crashed, and the first device
+pass already found the coach bubble broken, so the remaining unknowns are worth
+treating as likely rather than unlikely.
+
+**Last worked before that: 15 September 2026.** Steps 1-8 complete, plus skills
+tests, swing analysis, the coach chat, the voice features and custom courses.
 
 Every external integration was checked against the live deployment this
 session, not just mocked: the realtime token mint, TTS, Whisper, the caddie
@@ -79,9 +97,10 @@ the streaming replies. Each was fixed against what the device actually did, not
 against what the code looked like - the audio session, the press race, the
 empty commit and the dead realtime endpoint were all found that way.
 
-**Not yet verified on a device:** the coach bubble's clearance above the tab
-bar, and the My Courses form on a small screen - it is the longest form in the
-app by some margin and nobody has scrolled it on a phone.
+**Not yet verified on a device:** the My Courses form on a small screen - it is
+the longest form in the app by some margin and nobody has scrolled it on a
+phone. (The coach bubble was on this list until 18 September, when looking at
+it found it broken - see "Release prep".)
 
 ### Start the app
 
@@ -231,8 +250,10 @@ intact: they keep their own name, rating and slope.
 1. **Step 10, the 3D swing visualiser** - `@react-three/fiber` on `expo-gl`.
    Highest risk, lowest value; everything ships without it. Still the only
    unbuilt item from the original plan.
-2. **Real course data** - see the launch checklist. Needs an OpenGolfAPI key,
-   and the launch checklist says deliberately not during development.
+2. **The rest of the course data.** Par and championship yardage are now
+   transcribed from published scorecards (18 September). What is still
+   approximate: regular and forward tees, stroke indices, course and slope
+   ratings, and all green data. An OpenGolfAPI key would replace the lot.
 3. **Green data for custom courses** - a custom course gets a deliberately
    neutral green, so the caddie's putt reading is generic there. Collecting
    break direction and severity per hole would fix it, at the cost of a much
@@ -341,17 +362,11 @@ reading the code.
   is a ref now, read when the words arrive rather than when the closure was
   made.
 
-Known and **not** fixed:
+Known and not fixed at the time — **both fixed on 18 September, see "Release
+prep"**:
 
-- **`swingVideos.saveRecording` cannot clean up a rejected upload.** It deletes
-  the orphaned files and then throws — but a mutation is one transaction, so
-  the throw rolls the deletes back and both files survive. Covered by a test
-  that asserts the current behaviour so it fails the day it is fixed. Fixing it
-  needs two transactions: an action that checks ownership, runs a cleanup
-  mutation, and only then throws.
-- **`voice.realtimeToken` mints with `silence_duration_ms: 600`** while the
-  client's `session.update` overrides it to 350. It works, because the client
-  restates the session on open, but the two disagree.
+- `swingVideos.saveRecording` could not clean up a rejected upload.
+- `voice.realtimeToken` minted a `silence_duration_ms` the client overrode.
 
 ### Fixed on 10 September 2026
 
@@ -380,6 +395,378 @@ Worth fixing there too if anyone is using it:
 - Dates computed in UTC roll the day over at the wrong local hour.
 - `getClubAverages` performs no ownership check; `deleteSession` / `deleteShot`
   check only that *a* user is signed in.
+
+## Release prep — 18 September 2026
+
+Done this session. All of it was invisible while the app only ever ran through
+`expo start`, and all of it stood between the app and something an investor can
+hold.
+
+### The build would have shipped, then crashed
+
+`swing.tsx` calls `ImagePicker.requestCameraPermissionsAsync()` and
+`launchCameraAsync`, but `expo-image-picker` was not in `app.json`'s plugins -
+only `expo-audio` was. Expo Go carries every permission string in its own
+Info.plist, so recording a swing worked all through development and would have
+died the first time anyone tapped it in a standalone build. My Swing is a
+headline feature. `expo-image-picker` and `expo-camera` are both configured
+now, and `npx expo config --type introspect` confirms
+`NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription` and
+`android.permission.CAMERA` reach the manifest.
+
+**This is the class of bug that only a real build finds.** `npm run verify` and
+`expo export` both passed with it in place.
+
+### It wore the Expo template's clothes
+
+`icon.png` was the default blue Expo chevron, `splash-icon.png` was blank, the
+splash background was Expo blue `#208AEF` and the Android adaptive background
+`#E6F4FE`. Every icon is now generated from the official Dominus mark - the
+same crescent-and-pin paths the web app draws, in
+`reference/src/components/ui/dominus-logo.tsx` - in gold on `#141311`.
+
+The generator is `mobile/scripts/make-icons.js` (needs `npm i -D sharp`; it runs by hand when the mark changes, not as part of a build). It renders the mark large on
+transparency, **trims to its real content bounds**, then centres it: the
+artwork is not centred inside its own 100x120 viewBox (the crescent reaches
+x=88, the pin starts at x=43), so scaling the viewBox leaves the mark visibly
+pushed right. The Android foreground uses 42% coverage because the launcher
+masks away the outer third.
+
+Every other template asset was deleted after checking nothing referenced it -
+`logo-glow.png`, `tutorial-web.png`, the react logos, `tabIcons/`, the
+`expo.icon` bundle.
+
+### Nothing to distribute
+
+There was no `eas.json`, no `ios.bundleIdentifier`, no `android.package`. Added
+all three, plus `development` / `preview` / `production` profiles. Bundle id
+and package are `com.dominusgolf.mycoachmycaddie`.
+
+**`preview` carries `EXPO_PUBLIC_CONVEX_URL` in its `env` block on purpose.**
+`.env*.local` is gitignored, so EAS never uploads it and the build would
+otherwise come out pointing at nothing.
+
+### The course library was invented, not approximate
+
+The note here used to say TPC Sawgrass's 17th was the one hole that was
+externally false. It was not close to the one. The library is now transcribed
+from published scorecards, one per course, listed in the header of
+`convex/lib/courses.ts`. What was wrong:
+
+- **Sawgrass had 17 and 18 swapped.** The island green was a 385-yard par 4 and
+  the closing hole a 133-yard par 3.
+- **St Andrews played the Road Hole as a par 5.**
+- **Riviera's drivable 315-yard 10th had moved to the 16th.**
+- **Eight of the eighteen courses totalled the wrong par** - Augusta 73,
+  Pebble 73, Bethpage 74, Oakmont 73.
+
+`courseIntegrity.ts` had to change with it. It re-derived par from yardage,
+which was right while the data was invented and wrong the moment it was real:
+the bands turn Oakmont's 289-yard par 3 into a par 4, Winged Foot's 565-yard
+par 4 into a par 5, and Riviera's 10th into something else again. **It took the
+corrected library and broke it in exactly the famous places.** Par is now taken
+as authored; `findCourseIssues` still flags an impossible pairing, with bounds
+drawn round what real holes do, and reports rather than rewrites.
+`parForYardage` survives because custom courses use it to *suggest* a par.
+
+Still approximate, and said so in the header: regular and forward tees (scaled
+from championship by each hole's original ratio), stroke indices (except Bandon
+Dunes), course and slope ratings, and all green data.
+
+### A fresh account showed zeros
+
+`convex/seed.ts` - `internalMutation`, same reasoning as `devTools.ts` - fills
+one account with five months of golf:
+
+```bash
+npx convex run seed:demoGolfer '{"email":"demo@dominusgolf.com"}'
+```
+
+Sign up in the app with that address first. It is deterministic (same email and
+date give the same golfer) and clears its own previous output, so running it
+twice leaves one demo golfer rather than two.
+
+It produces an 11.4 index, a 91.3 scoring average, 12 rounds of 87-96 across
+the real course library, a live 38-day streak, a full bag with carry numbers,
+two passed skills gates, three launch monitor sessions and day 24 of 90.
+
+Two things worth knowing if you retune it. It reports the index by calling the
+app's own `handicapIndex()` rather than averaging differentials itself - a
+hand-rolled "best 8" disagreed with the screen, because WHS Rule 5.2a averages
+the best **4** of a 12-round record. And the scoring rates are set against the
+handicap, not against what looks right per hole: the library is all
+championship courses rated 73-77, so rounds have to be near +19 for the
+differential to read as a low teens index. The first pass felt like sensible
+golf and produced a 6.9.
+
+### Two known bugs, both fixed
+
+- **`swingVideos.saveRecording` could not clean up a rejected upload.** It
+  deleted the orphaned files and then threw, and a mutation is one transaction,
+  so the throw rolled the deletes back and both files survived - billable
+  forever, reachable by nothing. It is an `action` now: check ownership, run a
+  cleanup mutation, then throw. Three transactions. The client calls it with
+  `useAction`, and the test that asserted the broken behaviour now asserts the
+  fix.
+- **`voice.realtimeToken` minted with `silence_duration_ms: 600`** while the
+  client overrode it to 350. Both now read `LIVE_VAD` from `convex/lib/voice.ts`
+  - the only place a constant shared by both ends can live.
+
+### One account per email
+
+Signing up with Google and then with a password, on the same address, used to
+produce **two separate golfers** - two profiles, two sets of rounds, no hint
+that anything was wrong. The person would sign in the other way one day and
+find their game gone.
+
+It was not a bug in the library. `createOrUpdateUser` links a new sign-in to an
+existing user only when that user's email is *verified*
+(`uniqueUserWithVerifiedEmail`), and neither direction qualifies here: the
+Password provider never sets `emailVerificationTime`, because this app sends no
+verification mail. Convex Auth was refusing to link, on purpose.
+
+**It is right to refuse.** Linking on an unverified address is the account
+pre-hijacking attack: register `you@gmail.com` with a password before the owner
+does, wait for them to sign in with Google, and inherit everything they put in
+the app. The reverse - a password set against an existing Google account - is a
+permanent key to it.
+
+So `convex/auth.ts` keeps the refusal and makes it legible. A second method on
+an existing address now throws `ACCOUNT_EXISTS` naming the method that address
+already uses ("That email already has an account created with Google"), which
+the sign-in screen shows verbatim. Addresses are stored lower-cased so the
+check cannot be walked past with `Demo@` versus `demo@`.
+
+Two things to know if you touch it:
+
+- Defining `createOrUpdateUser` **replaces** the default entirely, including
+  its email-verified linking and its `afterUserCreatedOrUpdated` hook. The
+  insert here mirrors the default's shape; keep them in step.
+- The callback's `ctx` is typed against a generic data model, so it knows none
+  of this app's indexes. `ctx.db` is cast to the generated `DatabaseWriter` -
+  the runtime object is the real one, only the type is widened.
+
+`tests/auth.functions.test.ts` drives the real `auth:signIn` rather than
+`withIdentity`, which is why it is the only test file that needs a signing key:
+it generates a throwaway RS256 PEM per run, because `importPKCS8` rejects
+anything that is not a genuine PKCS#8 key.
+
+**Proper account linking needs email verification** - an emailed code proving
+the person owns the address. Worth doing the day this app sends mail; until
+then, one method per account is the honest behaviour.
+
+### A build switch for Google sign-in
+
+`src/constants/features.ts` holds `GOOGLE_SIGN_IN_ENABLED`, read from
+`EXPO_PUBLIC_GOOGLE_SIGN_IN` and **on by default**. The sign-in screen wraps
+both the Google button and the "or" divider above it in that flag, so turning
+it off ends the screen cleanly at Sign In rather than leaving a stray
+separator.
+
+It is on in every build profile. It exists because it looked for a while as
+though Testing mode would block outside accounts; it does not (see the Google
+note below). Left in place because it is the difference between one line in
+`eas.json` and a code change if that ever stops being true.
+
+**`EXPO_PUBLIC_*` and the Metro cache.** Metro's transform cache is keyed on
+file contents, not on environment variables, so changing one and rebuilding
+locally silently reuses the previous value. Two exports of this flag came back
+identical until `--clear` was added, which read as "the flag does not work"
+when the flag was fine. Any local build that sets an `EXPO_PUBLIC_*` variable
+needs `--clear`. EAS builds run in a fresh container, so they are not affected.
+
+To see what a bundle actually baked in, export without Hermes and read the
+constant directly:
+
+```bash
+npx expo export --platform android --no-bytecode --clear --output-dir /tmp/b
+grep -oE 'GOOGLE_SIGN_IN_ENABLED.{0,60}' /tmp/b/_expo/static/js/android/*.js
+#  ...var t=!0   → enabled
+#  ...var t=!1   → disabled
+```
+
+Grepping the bundle for the button's label does **not** work - Metro does not
+eliminate the string across a module boundary, so "Continue with Google" is
+present eitherpway.
+
+### Checking a deployment's wiring, not just its code
+
+`devTools.probeIntegrations` calls every external service the app depends on,
+against whichever deployment it is pointed at:
+
+```bash
+npx convex run devTools:probeIntegrations --prod
+```
+
+It checks `gpt-4o` and `gpt-4o-mini` chat, vision with a real image payload,
+text-to-speech, transcription, and the realtime token mint. Transcription is a
+round trip - it speaks a sentence, feeds the audio back to Whisper, and
+asserts the words survive - so both halves of dictation are tested against each
+other rather than either being trusted alone. A run costs a fraction of a cent
+and writes nothing.
+
+It exists because of how 18 September went. Three of the five environment
+variables copied to prod arrived corrupted: the shell never evaluated the
+`$(npx convex env get ...)` substitution, so the literal command text was
+stored in front of each real value. `JWT_PRIVATE_KEY`, `JWKS` and
+`OPENAI_API_KEY` were all 22-ish characters too long. Every sign-in failed with
+`Uncaught TypeError: "pkcs8" must be PKCS#8 formatted string`, and chat, speech,
+transcription and swing analysis were all dead too.
+
+**All 534 tests were green throughout.** They test the app's logic; they cannot
+test whether a deployment's secrets are real. Two habits close that gap:
+
+- Compare lengths between deployments rather than eyeballing. `devLen` vs
+  `prodLen` found this in one command.
+- **`jwks.json` returning 200 does not prove auth works.** `JWKS` is a separate
+  public value; the private key can be garbage while that endpoint answers
+  perfectly. Checking it and declaring auth healthy is what delayed finding
+  this. `npx convex logs --history 30 --prod` is the check that actually
+  answers the question.
+
+Copy secrets between deployments through the Convex dashboard, or from Git Bash
+where `$(...)` genuinely expands - not PowerShell or cmd.
+
+### One flaky test
+
+`coachChat.functions.test.ts` timed out against vitest's 5s default under full
+suite load - it is the first test to register the agent component into a cold
+in-memory deployment, and takes 600ms on its own. `testTimeout` is 20s now. A
+release gate that fails at random is worse than a slow one.
+
+### Deployments
+
+| | Deployment | Used by |
+|---|---|---|
+| dev | `colorful-horse-279` | `npx convex dev`, Expo Go |
+| **prod** | **`precise-wren-85`** | the EAS `preview` and `production` builds |
+
+Provisioned 18 September. `eas.json` points both build profiles at prod;
+`.env.local` still points local development at dev, which is what you want.
+
+### Runbook — Android APK for investors
+
+EAS project: **`@jeet2111/mycoach-mycaddie`**
+(`cdb607b7-376d-45e9-98c9-91a35c67c3a6`), already linked in `app.json`.
+
+**1. Give prod its environment. — DONE, 18 September.** All five are set:
+`JWT_PRIVATE_KEY`, `JWKS`, `OPENAI_API_KEY`, `AUTH_GOOGLE_ID`,
+`AUTH_GOOGLE_SECRET`. The Google pair is a *separate production OAuth client*,
+not dev's - dev's is registered against the dev domain and Google would refuse
+the callback.
+
+Worth knowing if it ever breaks: Convex Auth will not issue a session without
+`JWT_PRIVATE_KEY` and `JWKS`, and the symptom is that **nobody can sign in at
+all, not even with a password**. The check is one request, no credentials
+needed - 500 means they are missing:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" \
+  https://precise-wren-85.convex.site/.well-known/jwks.json    # expect 200
+```
+
+To copy a value between deployments without it passing through a clipboard:
+
+```bash
+npx convex env set JWKS "$(npx convex env get JWKS)" --prod
+```
+
+`SITE_URL` stays unset: the `redirect` callback in `convex/auth.ts` allow-lists
+`mycoach://` explicitly, which is what the APK uses.
+
+**2. Build.**
+
+```bash
+npx eas-cli@latest build -p android --profile preview
+```
+
+First run offers to generate an Android keystore - say yes, and let EAS keep
+it. Build takes 10-20 minutes and returns an `.apk` link that installs
+directly. No Apple account, no store review, no cost.
+
+**3. Seed the demo account on prod.** Sign up in the APK with the demo address
+first, then:
+
+```bash
+npx convex run seed:demoGolfer '{"email":"demo@dominusgolf.com"}' --prod
+```
+
+**Resetting between pitches.** Sign-ups accumulate on the demo deployment, and
+a half-onboarded stale account is what derails a walkthrough.
+`devTools.resetDeployment` clears every account and everything hanging off one,
+including stored swing clips and cached voice audio - deleting only the rows
+would leave those blobs billable and unreachable:
+
+```bash
+npx convex run devTools:resetDeployment \
+  '{"confirm":"DELETE ALL ACCOUNTS AND DATA"}' --prod
+```
+
+The phrase is required, and a near miss throws rather than doing something
+irreversible. It leaves `courseCache` alone - fetched reference data, not
+anybody's account. Afterwards sign up again and re-run the seed; auth keeps
+working, the deployment is just empty.
+
+In PowerShell the inner quotes need escaping - `'{\"confirm\":\"...\"}'` - or
+use Git Bash, where the plain form works.
+
+**Google sign-in.** The production OAuth client is registered and Google accepts
+`https://precise-wren-85.convex.site/api/auth/callback/google` - confirmed by
+calling Google's authorize endpoint with that client and redirect and getting a
+sign-in page rather than `redirect_uri_mismatch`. That path is not a guess:
+`@convex-dev/auth` builds it as `CONVEX_SITE_URL + "/api/auth/callback/" +
+providerId` (`dist/server/oauth/convexAuth.js`).
+
+It must be a **Web application** client, not an Android one. The flow never
+terminates in the app - Google redirects to the Convex HTTP endpoint, which
+exchanges the code server-side and then deep-links back via `mycoach://`. An
+Android client, the kind that wants a SHA-1 fingerprint, cannot work here.
+
+**The consent app is in Testing, and that is fine.** Testing is usually
+described as restricting sign-in to accounts on the test-user list, which would
+have made the button a dead end for anyone in a pitch. It was tested on a
+device with an account that was not on the list and it signed in normally: that
+restriction travels with *sensitive or restricted* scopes, and this app asks
+only for `openid`, `email` and `profile`. Google counts those sign-ins in the
+"other" bucket of the 100-user cap on the Audience page, which is the number to
+watch if you want to confirm it yourself - `(n test, m other)` with `m > 0`
+means outside accounts are getting through.
+
+What Testing does still impose: **100 accounts for the lifetime of the app**,
+and a Google refresh grant that expires after 7 days. The latter ends the
+*Google* grant, not the app session - Convex Auth issues its own JWT once the
+code is exchanged - so nobody is signed out of the app.
+
+Publishing is therefore not on the critical path. If you do want it: Google
+will not let you publish until the Branding page has a home page, privacy
+policy and terms URL, all on a domain in Authorised domains and verified in
+Search Console. **And the uploaded logo forces a verification review on
+publish** - Google says so on that page. The logo is free while in Testing.
+
+The consent screen will read `precise-wren-85.convex.site` until brand
+verification, which needs a Convex custom domain (paid plan), that domain
+verified in Search Console, and a privacy policy and terms published on it.
+Pick the final app name before submitting - changing it afterwards triggers a
+fresh review.
+
+**Watch the OpenAI tier.** 30k TPM caps swing analysis at ~24 frames, and
+several people demoing at once will see 429s.
+
+### The coach bubble, verified on a device at last
+
+It was listed here for two sessions as "not yet verified on a device", and the
+first time anyone looked at it, it was broken: the label read **"Ask / Mas /
+on"**, wrapped three lines deep and split mid-word.
+
+The label was absolutely positioned inside the 56pt circle, so React Native
+measured it against a 56pt containing block - `right: 62` moves a box, it does
+not widen it. Label and portrait are siblings in a row now, and the row is what
+floats, so the label takes the width its text needs. `numberOfLines={1}` as
+well, so a longer coach name can never bring the wrap back.
+
+The clearance above the tab bar was fine.
+
+Still not verified on a device: the My Courses form on a small screen.
 
 ## Build order
 
@@ -462,18 +849,15 @@ required if a web build is ever shipped.
 
 ### 4. Replace the built-in course library with real data
 
-`convex/lib/courses.ts` is plausible placeholder data, not authoritative
-course data. `convex/lib/courseIntegrity.ts` repairs what is detectable —
-duplicate stroke indices and pars that contradict their own yardage — and
-`tests/courses.test.ts` asserts the result is self-consistent.
+**Mostly done on 18 September** — par and championship yardage for all 18
+courses are transcribed from published scorecards, listed in the header of
+`convex/lib/courses.ts`. See "Release prep" for what was wrong and why
+`courseIntegrity.ts` had to stop re-deriving par.
 
-What it cannot repair is a hole whose par and yardage agree but are both wrong.
-**TPC Sawgrass's 17th is listed as a 368-yard par 4**; it is the ~137-yard
-island-green par 3. Internally consistent, externally false.
-
-Fix by sourcing the library from OpenGolfAPI (`courseCache.ts` in the
-reference already does this) or by correcting the data hole by hole against a
-real scorecard. Until then, treat displayed yardages and pars as approximate.
+Still approximate, and the reason to keep this item open: regular and forward
+tee yardages, stroke indices (except Bandon Dunes), course and slope ratings,
+and all green data. Sourcing the library from OpenGolfAPI (`courseCache.ts` in
+the reference already does this) would replace all of it at once.
 
 ### 5. Separate dev and prod OAuth clients
 
