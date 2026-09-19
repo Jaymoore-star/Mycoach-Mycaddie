@@ -7,17 +7,35 @@
     "icon": "./assets/images/icon.png",
     "scheme": "mycoach",
     "userInterfaceStyle": "automatic",
+    "backgroundColor": "#141311",
+    "primaryColor": "#C5A059",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "com.dominusgolf.mycoachmycaddie",
+      "buildNumber": "1",
+      "supportsTablet": false
     },
     "android": {
+      "package": "com.dominusgolf.mycoachmycaddie",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#141311",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "output": "static",
@@ -28,9 +46,14 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#141311",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 140,
+          "dark": {
+            "backgroundColor": "#141311",
+            "image": "./assets/images/splash-icon.png",
+            "imageWidth": 140
+          }
         }
       ],
       "expo-secure-store",
@@ -40,11 +63,40 @@
         {
           "microphonePermission": "Allow MyCoach / MyCaddie to use the microphone so you can talk to your caddie and log shots by voice."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow MyCoach / MyCaddie to use the camera so you can record your swing for analysis.",
+          "photosPermission": "Allow MyCoach / MyCaddie to access your photos so you can pick a swing video to analyse.",
+          "microphonePermission": "Allow MyCoach / MyCaddie to use the microphone while recording your swing."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow MyCoach / MyCaddie to use the camera so you can record your swing for analysis.",
+          "microphonePermission": "Allow MyCoach / MyCaddie to use the microphone while recording your swing.",
+          "recordAudioAndroid": true
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cdb607b7-376d-45e9-98c9-91a35c67c3a6"
+      }
+    },
+    "owner": "jeet2111",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/cdb607b7-376d-45e9-98c9-91a35c67c3a6"
     }
   }
 }
