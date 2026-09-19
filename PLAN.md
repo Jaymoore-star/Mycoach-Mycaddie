@@ -65,8 +65,12 @@ course data from published scorecards, one account per email, and a seeded demo
 golfer live on prod. 547 tests pass, lint is clean, and both bundles export.
 Uncommitted — see "Release prep" below.**
 
-**Next action is Jeet's:** `npx eas-cli@latest build -p android --profile
-preview`, then walk the app on the phone.
+**The Android APK is built and working.** Build `b3b04619`, profile `preview`,
+installable from its Expo page. Two open questions before it goes further:
+whether anyone in the room has an iPhone (this build does nothing for them -
+iOS needs an Apple Developer account and TestFlight), and whether more than one
+person will tap at once (everyone shares the single `demo@dominusgolf.com`
+account against a live backend, so they would see each other's changes).
 
 Prod (`precise-wren-85`) is provisioned and proven: all five environment
 variables correct, a real sign-in with clean logs,
@@ -74,10 +78,10 @@ variables correct, a real sign-in with clean logs,
 `demo@dominusgolf.com` seeded - 10.4 index, 89.9 average, 12 rounds, a 38-day
 streak, 174 range shots.
 
-**Still unexercised on a device: recording a swing.** That is the path the
-missing `expo-image-picker` config would have crashed, and the first device
-pass already found the coach bubble broken, so the remaining unknowns are worth
-treating as likely rather than unlikely.
+**Verified on the installed APK** (build `b3b04619`, commit `b93e37f`): the
+features were exercised on the real build, including recording a swing - the
+path the missing `expo-image-picker` config would have crashed. That was the
+last thing only a standalone build could prove.
 
 **Last worked before that: 15 September 2026.** Steps 1-8 complete, plus skills
 tests, swing analysis, the coach chat, the voice features and custom courses.
@@ -100,7 +104,8 @@ empty commit and the dead realtime endpoint were all found that way.
 **Not yet verified on a device:** the My Courses form on a small screen - it is
 the longest form in the app by some margin and nobody has scrolled it on a
 phone. (The coach bubble was on this list until 18 September, when looking at
-it found it broken - see "Release prep".)
+it found it broken - see "Release prep". Two of the three items on this list
+turned out to be real bugs, which is the argument for clearing the third.)
 
 ### Start the app
 
