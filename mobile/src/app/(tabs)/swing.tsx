@@ -104,7 +104,8 @@ export default function SwingScreen() {
   );
 
   const generateUploadUrl = useMutation(api.swingVideos.generateUploadUrl);
-  const saveRecording = useMutation(api.swingVideos.saveRecording);
+  // An action, not a mutation - it cleans up a rejected upload before failing.
+  const saveRecording = useAction(api.swingVideos.saveRecording);
   const deleteRecording = useMutation(api.swingVideos.deleteRecording);
   const analyzeSwing = useAction(api.swingVideos.analyzeSwing);
 

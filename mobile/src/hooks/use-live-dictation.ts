@@ -17,6 +17,7 @@ import { requestRecordingPermissionsAsync, setAudioModeAsync, useAudioStream } f
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '@/convex/_generated/api';
+import { LIVE_VAD } from '@/convex/lib/voice';
 import { encodeBase64 } from '@/lib/base64';
 
 import {
@@ -45,19 +46,11 @@ const CONNECT_TIMEOUT_MS = 6000;
 /**
  * How the server decides a sentence has ended.
  *
- * Transcription is turn-based: nothing comes back until the model decides the
- * golfer has stopped talking, so this number *is* the delay between saying a
- * thing and seeing it. 600ms was the reference app's setting for a
- * conversational agent, which wants to be sure you have finished before it
- * answers. Dictation wants the opposite - shorter segments, arriving sooner,
- * even at the cost of the occasional split at a natural pause.
+ * Shared with `voice.realtimeToken`, which mints the session with these same
+ * numbers - restating them here is what makes the socket behave the way the
+ * mint asked for. See `LIVE_VAD` for why the delay is set where it is.
  */
-const VAD = {
-  type: 'server_vad' as const,
-  threshold: 0.5,
-  prefix_padding_ms: 200,
-  silence_duration_ms: 350,
-};
+const VAD = LIVE_VAD;
 
 /**
  * Microphone buffers held while the socket is still opening.

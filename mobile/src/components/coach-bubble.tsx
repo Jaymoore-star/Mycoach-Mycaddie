@@ -48,33 +48,51 @@ export function CoachBubble({ coachId }: { coachId: string | undefined }) {
       accessibilityLabel={`Ask ${coach.name}`}
       hitSlop={8}
       style={({ pressed }) => [
-        styles.bubble,
+        styles.row,
         {
           bottom: insets.bottom + TAB_BAR_HEIGHT + CLEARANCE,
-          backgroundColor: colors.card,
-          borderColor: coach.accent,
-          shadowColor: '#000',
           transform: [{ scale: pressed ? 0.94 : 1 }],
         },
       ]}>
-      <Image source={coach.image} style={styles.avatar} contentFit="cover" />
-      <View style={[styles.badge, { backgroundColor: coach.accent }]}>
-        <MessageCircle size={12} color={colors.card} fill={colors.card} />
-      </View>
       <View style={[styles.label, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <ThemedText variant="caption" tone="secondary">
+        <ThemedText variant="caption" tone="secondary" numberOfLines={1}>
           Ask {coach.name}
         </ThemedText>
+      </View>
+
+      <View
+        style={[
+          styles.bubble,
+          { backgroundColor: colors.card, borderColor: coach.accent, shadowColor: '#000' },
+        ]}>
+        <Image source={coach.image} style={styles.avatar} contentFit="cover" />
+        <View style={[styles.badge, { backgroundColor: coach.accent }]}>
+          <MessageCircle size={12} color={colors.card} fill={colors.card} />
+        </View>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  bubble: {
+  /**
+   * Label and portrait sit in a row, and the row is what floats.
+   *
+   * The label used to be absolutely positioned inside the 56pt circle, which
+   * meant React Native measured it against a 56pt containing block: "Ask
+   * Mason" had nowhere to go and broke mid-word, three lines deep, reading
+   * "Ask / Mas / on". Laying them out as siblings lets the label take the
+   * width its text actually needs.
+   */
+  row: {
     position: 'absolute',
     right: Spacing.five,
     // `bottom` is set inline - it depends on the device's safe-area inset.
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  bubble: {
     width: 56,
     height: 56,
     borderRadius: Radius.pill,
@@ -82,7 +100,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     // Elevation on Android, shadow on iOS - without one it reads as part of
-    // the page rather than floating above it.
+    // the page rather than floating above it. On the circle rather than the
+    // row, so the shadow follows the portrait and not an invisible rectangle.
     ...Platform.select({
       ios: { shadowOpacity: 0.22, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
       android: { elevation: 6 },
@@ -101,8 +120,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: {
-    position: 'absolute',
-    right: 62,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
     borderRadius: Radius.pill,

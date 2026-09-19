@@ -35,26 +35,46 @@ export const generateUploadUrl = mutation({
   },
 });
 
-/** Records the metadata once the file itself is in storage. */
-export const saveRecording = mutation({
+const recordingArgs = {
+  storageId: v.id('_storage'),
+  profileId: v.id('golferProfiles'),
+  label: v.string(),
+  notes: v.optional(v.string()),
+  durationSeconds: v.number(),
+  recordedAt: v.string(),
+  // Stills in swing order, extracted on-device at capture time.
+  frameStorageIds: v.optional(v.array(v.id('_storage'))),
+};
+
+/** True when the signed-in caller owns this profile. */
+export const ownsProfile = internalQuery({
+  args: { profileId: v.id('golferProfiles') },
+  handler: async (ctx, args) => (await ownedProfile(ctx, args.profileId)) !== null,
+});
+
+/**
+ * Drops an upload that was rejected, so it is not billable forever while being
+ * reachable by nothing.
+ */
+export const discardUpload = internalMutation({
   args: {
     storageId: v.id('_storage'),
-    profileId: v.id('golferProfiles'),
-    label: v.string(),
-    notes: v.optional(v.string()),
-    durationSeconds: v.number(),
-    recordedAt: v.string(),
-    // Stills in swing order, extracted on-device at capture time.
     frameStorageIds: v.optional(v.array(v.id('_storage'))),
   },
   handler: async (ctx, args) => {
+    await ctx.storage.delete(args.storageId).catch(() => undefined);
+    for (const frameId of args.frameStorageIds ?? []) {
+      await ctx.storage.delete(frameId).catch(() => undefined);
+    }
+  },
+});
+
+/** The write itself. Re-checks ownership: this is the transaction that counts. */
+export const insertRecording = internalMutation({
+  args: recordingArgs,
+  handler: async (ctx, args) => {
     const owned = await ownedProfile(ctx, args.profileId);
     if (!owned) {
-      // Clean up the orphaned uploads rather than leaving them billable forever.
-      await ctx.storage.delete(args.storageId);
-      for (const frameId of args.frameStorageIds ?? []) {
-        await ctx.storage.delete(frameId).catch(() => undefined);
-      }
       throw new ConvexError({ message: 'Profile not found', code: 'NOT_FOUND' });
     }
 
@@ -68,6 +88,34 @@ export const saveRecording = mutation({
       recordedAt: args.recordedAt,
       frameStorageIds: args.frameStorageIds,
     });
+  },
+});
+
+/**
+ * Records the metadata once the file itself is in storage.
+ *
+ * An action rather than a mutation, because rejecting an upload has to both
+ * delete the orphaned files *and* fail. A mutation is a single transaction, so
+ * throwing rolls the deletes back with everything else and the files survive -
+ * which is exactly what this used to do. Three separate transactions: check,
+ * clean up, then throw.
+ */
+export const saveRecording = action({
+  args: recordingArgs,
+  handler: async (ctx, args): Promise<Id<'swingVideos'>> => {
+    const owns = await ctx.runQuery(internal.swingVideos.ownsProfile, {
+      profileId: args.profileId,
+    });
+
+    if (!owns) {
+      await ctx.runMutation(internal.swingVideos.discardUpload, {
+        storageId: args.storageId,
+        frameStorageIds: args.frameStorageIds,
+      });
+      throw new ConvexError({ message: 'Profile not found', code: 'NOT_FOUND' });
+    }
+
+    return await ctx.runMutation(internal.swingVideos.insertRecording, args);
   },
 });
 

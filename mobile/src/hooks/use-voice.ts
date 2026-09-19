@@ -28,6 +28,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import type { CoachId } from '@/convex/lib/coachLevels';
+import { errorMessage as messageOf } from '@/lib/errors';
 
 /** Anything shorter than this is a mis-tap, not a sentence. */
 const MIN_RECORDING_MS = 400;
@@ -130,16 +131,6 @@ function openPlayer(url: string): AudioPlayer {
 /** Unwraps whichever shape the failure arrived in, for an alert or a caption. */
 export function voiceErrorMessage(error: unknown, fallback: string): string {
   return messageOf(error, fallback);
-}
-
-function messageOf(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message) return error.message;
-  // ConvexError arrives as `{ data: { message, code } }` once it crosses the wire.
-  if (typeof error === 'object' && error !== null && 'data' in error) {
-    const data = (error as { data?: { message?: string } }).data;
-    if (data?.message) return data.message;
-  }
-  return fallback;
 }
 
 // ─── Speaking ────────────────────────────────────────────────────────────────

@@ -35,6 +35,7 @@ import type * as lib_strokesGained from "../lib/strokesGained.js";
 import type * as lib_voice from "../lib/voice.js";
 import type * as profiles from "../profiles.js";
 import type * as rounds from "../rounds.js";
+import type * as seed from "../seed.js";
 import type * as sessions from "../sessions.js";
 import type * as shots from "../shots.js";
 import type * as skillTests from "../skillTests.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   "lib/voice": typeof lib_voice;
   profiles: typeof profiles;
   rounds: typeof rounds;
+  seed: typeof seed;
   sessions: typeof sessions;
   shots: typeof shots;
   skillTests: typeof skillTests;

@@ -44,6 +44,7 @@ import {
 } from './lib/coachLevels';
 import { getCoachProfile } from './lib/coachPersona';
 import {
+  LIVE_VAD,
   SHOT_PARSE_SYSTEM_PROMPT,
   buildCaddieSystemPrompt,
   buildSessionSummary,
@@ -422,13 +423,9 @@ export const realtimeToken = action({
                 },
                 // Server-side voice activity detection, so a pause between
                 // sentences commits a segment without the golfer doing
-                // anything.
-                turn_detection: {
-                  type: 'server_vad',
-                  threshold: 0.5,
-                  prefix_padding_ms: 300,
-                  silence_duration_ms: 600,
-                },
+                // anything. The client restates these on open; both read the
+                // same constant so the two cannot disagree.
+                turn_detection: LIVE_VAD,
               },
             },
           },

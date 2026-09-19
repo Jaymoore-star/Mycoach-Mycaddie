@@ -45,7 +45,7 @@ describe('saveRecording', () => {
     const { asUser, profileId } = await signInWithProfile(t);
     const storageId = await stored(t);
 
-    await asUser.mutation(api.swingVideos.saveRecording, { ...RECORDING, profileId, storageId });
+    await asUser.action(api.swingVideos.saveRecording, { ...RECORDING, profileId, storageId });
 
     const recordings = await asUser.query(api.swingVideos.listRecordings, { profileId });
     expect(recordings).toHaveLength(1);
@@ -63,7 +63,7 @@ describe('saveRecording', () => {
     const frameId = await stored(t, 'a frame');
 
     await expect(
-      asBob.mutation(api.swingVideos.saveRecording, {
+      asBob.action(api.swingVideos.saveRecording, {
         ...RECORDING,
         profileId,
         storageId,
@@ -77,13 +77,13 @@ describe('saveRecording', () => {
     ).resolves.toEqual([]);
   });
 
-  it('leaves the rejected upload in storage - a known gap, not the intent', async () => {
+  it('deletes the rejected upload rather than leaving it billable', async () => {
     const t = testApp();
     const { profileId } = await signInWithProfile(t, { email: 'a@example.com' });
     const { asUser: asBob } = await signIn(t, 'b@example.com');
 
     await expect(
-      asBob.mutation(api.swingVideos.saveRecording, {
+      asBob.action(api.swingVideos.saveRecording, {
         ...RECORDING,
         profileId,
         storageId: await stored(t),
@@ -91,19 +91,12 @@ describe('saveRecording', () => {
       }),
     ).rejects.toThrow();
 
-    // `saveRecording` deletes the orphaned files before it throws, and means
-    // to - the file is already uploaded by this point, and left behind it is
-    // billable forever and reachable by nothing. But a mutation is one
-    // transaction: throwing rolls the deletes back with everything else, so
-    // the cleanup never commits and both files survive.
-    //
-    // It cannot be fixed inside a mutation. Deleting and then failing needs
-    // the two to be separate transactions - an action that checks ownership,
-    // runs a cleanup mutation, and only then throws.
-    //
-    // Asserted as it actually behaves so this test fails the day it is fixed,
-    // rather than quietly passing while the files pile up.
-    expect(await storedFiles(t)).toHaveLength(2);
+    // The file is already uploaded by the time ownership is checked, so a
+    // rejection that keeps it leaves something billable forever and reachable
+    // by nothing. `saveRecording` is an action precisely so the cleanup and
+    // the failure land in separate transactions - as a mutation, the throw
+    // rolled the deletes back and both files survived.
+    expect(await storedFiles(t)).toHaveLength(0);
   });
 
   it('keeps the extracted frames with the recording', async () => {
@@ -112,7 +105,7 @@ describe('saveRecording', () => {
     const storageId = await stored(t);
     const frames = [await stored(t, 'f1'), await stored(t, 'f2')];
 
-    await asUser.mutation(api.swingVideos.saveRecording, {
+    await asUser.action(api.swingVideos.saveRecording, {
       ...RECORDING,
       profileId,
       storageId,
@@ -128,7 +121,7 @@ describe('listRecordings', () => {
   it('returns nothing for a profile the caller does not own', async () => {
     const t = testApp();
     const { asUser, profileId } = await signInWithProfile(t, { email: 'a@example.com' });
-    await asUser.mutation(api.swingVideos.saveRecording, {
+    await asUser.action(api.swingVideos.saveRecording, {
       ...RECORDING,
       profileId,
       storageId: await stored(t),
@@ -145,7 +138,7 @@ describe('deleteRecording', () => {
   it('takes the clip and its frames out of storage with the row', async () => {
     const t = testApp();
     const { asUser, profileId } = await signInWithProfile(t);
-    const videoId = await asUser.mutation(api.swingVideos.saveRecording, {
+    const videoId = await asUser.action(api.swingVideos.saveRecording, {
       ...RECORDING,
       profileId,
       storageId: await stored(t),
@@ -164,7 +157,7 @@ describe('deleteRecording', () => {
     const t = testApp();
     const { asUser, profileId } = await signInWithProfile(t);
     const frameId = await stored(t, 'f1');
-    const videoId = await asUser.mutation(api.swingVideos.saveRecording, {
+    const videoId = await asUser.action(api.swingVideos.saveRecording, {
       ...RECORDING,
       profileId,
       storageId: await stored(t),
@@ -182,7 +175,7 @@ describe('deleteRecording', () => {
   it('refuses to delete a recording belonging to someone else', async () => {
     const t = testApp();
     const { asUser, profileId } = await signInWithProfile(t, { email: 'a@example.com' });
-    const videoId = await asUser.mutation(api.swingVideos.saveRecording, {
+    const videoId = await asUser.action(api.swingVideos.saveRecording, {
       ...RECORDING,
       profileId,
       storageId: await stored(t),
@@ -203,7 +196,7 @@ describe('updateRecording', () => {
   it('renames the golfer own recording', async () => {
     const t = testApp();
     const { asUser, profileId } = await signInWithProfile(t);
-    const videoId = await asUser.mutation(api.swingVideos.saveRecording, {
+    const videoId = await asUser.action(api.swingVideos.saveRecording, {
       ...RECORDING,
       profileId,
       storageId: await stored(t),
@@ -218,7 +211,7 @@ describe('updateRecording', () => {
   it('leaves the label alone when only notes are sent', async () => {
     const t = testApp();
     const { asUser, profileId } = await signInWithProfile(t);
-    const videoId = await asUser.mutation(api.swingVideos.saveRecording, {
+    const videoId = await asUser.action(api.swingVideos.saveRecording, {
       ...RECORDING,
       profileId,
       storageId: await stored(t),
@@ -234,7 +227,7 @@ describe('updateRecording', () => {
   it('refuses to rename a recording belonging to someone else', async () => {
     const t = testApp();
     const { asUser, profileId } = await signInWithProfile(t, { email: 'a@example.com' });
-    const videoId = await asUser.mutation(api.swingVideos.saveRecording, {
+    const videoId = await asUser.action(api.swingVideos.saveRecording, {
       ...RECORDING,
       profileId,
       storageId: await stored(t),
@@ -251,7 +244,7 @@ describe('analyzeSwing', () => {
   it('is closed to a caller who is not signed in', async () => {
     const t = testApp();
     const { asUser, profileId } = await signInWithProfile(t);
-    const videoId = await asUser.mutation(api.swingVideos.saveRecording, {
+    const videoId = await asUser.action(api.swingVideos.saveRecording, {
       ...RECORDING,
       profileId,
       storageId: await stored(t),
@@ -264,7 +257,7 @@ describe('analyzeSwing', () => {
     const t = testApp();
     vi.stubEnv('OPENAI_API_KEY', '');
     const { asUser, profileId } = await signInWithProfile(t);
-    const videoId = await asUser.mutation(api.swingVideos.saveRecording, {
+    const videoId = await asUser.action(api.swingVideos.saveRecording, {
       ...RECORDING,
       profileId,
       storageId: await stored(t),
@@ -282,7 +275,7 @@ describe('analyzeSwing', () => {
     vi.stubEnv('OPENAI_API_KEY', 'sk-test-not-a-real-key');
 
     const { asUser, profileId } = await signInWithProfile(t, { email: 'a@example.com' });
-    const videoId = await asUser.mutation(api.swingVideos.saveRecording, {
+    const videoId = await asUser.action(api.swingVideos.saveRecording, {
       ...RECORDING,
       profileId,
       storageId: await stored(t),

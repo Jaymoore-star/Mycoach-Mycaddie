@@ -11,6 +11,7 @@
  * subject in that shape; there is no need to run the real sign-in flow.
  */
 import { register as registerAgent } from '@convex-dev/agent/test';
+import { afterAll, beforeAll, vi } from 'vitest';
 import { convexTest } from 'convex-test';
 
 import { api } from '../convex/_generated/api';
@@ -98,5 +99,43 @@ export async function completeToday(
       sessionComplete: true,
       sessionType: 'practice',
     });
+  });
+}
+
+/**
+ * Makes a real `auth:signIn` possible in a test.
+ *
+ * Most function tests sign in with `withIdentity`, which fabricates an identity
+ * and never runs the auth implementation. A test that drives the real sign-in
+ * needs a deployment that can mint a session token, which means an actual
+ * RS256 key - `importPKCS8` rejects anything that is not a genuine PKCS#8 PEM,
+ * so a placeholder string will not do. One throwaway key per file.
+ *
+ * Call at the top of a `describe`, or at file scope.
+ */
+export function useAuthSigningKey() {
+  beforeAll(async () => {
+    const { privateKey } = await crypto.subtle.generateKey(
+      {
+        name: 'RSASSA-PKCS1-v1_5',
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: 'SHA-256',
+      },
+      true,
+      ['sign', 'verify'],
+    );
+
+    const der = new Uint8Array(await crypto.subtle.exportKey('pkcs8', privateKey));
+    let binary = '';
+    for (const byte of der) binary += String.fromCharCode(byte);
+    const body = (btoa(binary).match(/.{1,64}/g) ?? []).join('\n');
+
+    vi.stubEnv('JWT_PRIVATE_KEY', `-----BEGIN PRIVATE KEY-----\n${body}\n-----END PRIVATE KEY-----`);
+    vi.stubEnv('CONVEX_SITE_URL', 'https://test.convex.site');
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
   });
 }

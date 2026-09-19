@@ -18,5 +18,14 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    /**
+     * Vitest's default is 5s, which the coach-chat tests flake against when the
+     * whole suite runs at once: the first of them pays for registering the
+     * `@convex-dev/agent` component into a cold in-memory deployment, which is
+     * comfortably under a second on its own and several times that when it is
+     * competing with every other file. A release gate that fails at random is
+     * worse than a slow one.
+     */
+    testTimeout: 20_000,
   },
 });

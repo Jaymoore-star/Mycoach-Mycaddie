@@ -439,3 +439,25 @@ export function buildCaddieSystemPrompt(
     .filter(Boolean)
     .join('\n');
 }
+
+/**
+ * Server-side voice activity detection for live dictation.
+ *
+ * `silence_duration_ms` *is* the delay between saying a thing and seeing it:
+ * transcription is turn-based, so the server waits this long for more speech
+ * before committing the segment and transcribing it. 600ms suits a
+ * conversational agent that must be sure the speaker has finished; dictation
+ * wants shorter segments arriving sooner, even at the cost of the occasional
+ * split at a natural pause.
+ *
+ * Lives here because both ends need the same numbers. `voice.realtimeToken`
+ * mints the session with them and the client restates them in `session.update`
+ * when the socket opens - written out separately, the two drifted apart and
+ * the mint asked for 600ms while the client overrode it to 350ms.
+ */
+export const LIVE_VAD = {
+  type: 'server_vad',
+  threshold: 0.5,
+  prefix_padding_ms: 200,
+  silence_duration_ms: 350,
+} as const;

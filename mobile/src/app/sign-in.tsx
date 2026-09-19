@@ -15,12 +15,40 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/ui/text';
+import { GOOGLE_SIGN_IN_ENABLED } from '@/constants/features';
 import { FontSize, Radius, Spacing } from '@/constants/theme';
 import { useOAuthSignIn } from '@/hooks/use-oauth-sign-in';
 import { useTheme } from '@/hooks/use-theme';
+import { errorMessage } from '@/lib/errors';
 import { GoogleIcon } from '@/components/ui/google-icon';
 
 type Flow = 'signIn' | 'signUp';
+
+/**
+ * What to put under the form when `signIn` throws.
+ *
+ * Convex Auth reports a wrong email or password as `InvalidSecret` or
+ * `InvalidAccountId`, and those deserve the friendly line - the golfer does not
+ * need the internal name for a typo. Everything else is a real fault with its
+ * own message: no auth keys on the deployment, an unreachable backend, a
+ * provider that was never configured.
+ *
+ * This used to be a bare `catch {}` that answered every failure with "It may
+ * already exist", which is a guess presented as a diagnosis. It sent a
+ * debugging session after a duplicate account that did not exist, when the
+ * server had said something else entirely and been ignored.
+ */
+function signInErrorMessage(error: unknown, flow: Flow): string {
+  const raw = errorMessage(error, '');
+
+  if (!raw || /InvalidSecret|InvalidAccountId|InvalidCredentials/i.test(raw)) {
+    return flow === 'signIn'
+      ? 'Incorrect email or password.'
+      : 'Could not create that account. It may already exist.';
+  }
+
+  return raw;
+}
 
 export default function SignInScreen() {
   const colors = useTheme();
@@ -55,12 +83,8 @@ export default function SignInScreen() {
       await signIn('password', { email: email.trim(), password, flow });
       // Stack.Protected in the root layout swaps to the tabs automatically
       // once isAuthenticated flips, so there is no navigation call here.
-    } catch {
-      setError(
-        flow === 'signIn'
-          ? 'Incorrect email or password.'
-          : 'Could not create that account. It may already exist.',
-      );
+    } catch (e) {
+      setError(signInErrorMessage(e, flow));
       setSubmitting(false);
     }
   }
@@ -162,22 +186,26 @@ export default function SignInScreen() {
           />
         </View>
 
-        <View style={styles.divider}>
-          <View style={[styles.rule, { backgroundColor: colors.border }]} />
-          <ThemedText variant="caption" tone="muted" uppercase>
-            or
-          </ThemedText>
-          <View style={[styles.rule, { backgroundColor: colors.border }]} />
-        </View>
+        {GOOGLE_SIGN_IN_ENABLED && (
+          <>
+            <View style={styles.divider}>
+              <View style={[styles.rule, { backgroundColor: colors.border }]} />
+              <ThemedText variant="caption" tone="muted" uppercase>
+                or
+              </ThemedText>
+              <View style={[styles.rule, { backgroundColor: colors.border }]} />
+            </View>
 
-        <Button
-          label="Continue with Google"
-          variant="secondary"
-          icon={<GoogleIcon />}
-          onPress={() => void google.start()}
-          loading={google.inProgress}
-          disabled={busy}
-        />
+            <Button
+              label="Continue with Google"
+              variant="secondary"
+              icon={<GoogleIcon />}
+              onPress={() => void google.start()}
+              loading={google.inProgress}
+              disabled={busy}
+            />
+          </>
+        )}
 
         <View style={styles.switchRow}>
           <ThemedText variant="body" tone="secondary">
