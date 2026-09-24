@@ -32,6 +32,20 @@ const FEATURES = [
   },
 ] as const;
 
+/**
+ * The hero is dark in both themes.
+ *
+ * It used to be scrimmed with the theme background, which in light mode is a
+ * cream wash: the photo went milky and the grey secondary text sat on it at
+ * barely any contrast - the first thing a new golfer, or a Play reviewer, read.
+ * A charcoal scrim with fixed light text reads the same whatever the theme,
+ * and matches the store's feature graphic.
+ */
+const HERO_SCRIM = '#141311';
+const HERO_TEXT = '#F2F0ED';
+const HERO_TEXT_SOFT = 'rgba(242, 240, 237, 0.86)';
+const HERO_TEXT_FAINT = 'rgba(242, 240, 237, 0.72)';
+
 const PROOF_POINTS = [
   'Structured greens-to-tee methodology',
   "Skills gates to ensure you're ready before advancing",
@@ -59,26 +73,24 @@ export default function LandingScreen() {
           contentFit="cover"
         />
         {/* Scrim keeps the wordmark legible over the course photo. */}
-        <View
-          style={[StyleSheet.absoluteFill, { backgroundColor: colors.background, opacity: 0.62 }]}
-        />
+        <View style={[StyleSheet.absoluteFill, styles.scrim]} />
         <View style={[styles.goldLine, { top: insets.top }]} />
 
         <View style={styles.heroContent}>
-          <ThemedText variant="caption" tone="accent" uppercase style={styles.wordmark}>
+          <ThemedText variant="caption" uppercase style={[styles.wordmark, styles.onPhotoGold]}>
             Dominus Golf · Elite Academy
           </ThemedText>
 
-          <ThemedText variant="display" style={styles.title}>
-            MyCoach <ThemedText variant="display" tone="accent">/ MyCaddie</ThemedText>
+          <ThemedText variant="display" style={[styles.title, styles.onPhoto]}>
+            MyCoach <ThemedText variant="display" style={styles.onPhotoGold}>/ MyCaddie</ThemedText>
           </ThemedText>
 
-          <ThemedText variant="body" tone="secondary" style={styles.tagline}>
+          <ThemedText variant="body" style={[styles.tagline, styles.onPhoto, styles.onPhotoSoft]}>
             Your personal AI coach with 36 years of top-10 instructor knowledge and an elite
             on-course caddie - all in one app.
           </ThemedText>
 
-          <ThemedText variant="heading" tone="accent" style={styles.promise}>
+          <ThemedText variant="heading" style={[styles.promise, styles.onPhotoGold]}>
             90 days to score under 80.
           </ThemedText>
 
@@ -91,10 +103,10 @@ export default function LandingScreen() {
         </View>
 
         <View style={styles.scrollCue}>
-          <ThemedText variant="caption" tone="muted" uppercase>
+          <ThemedText variant="caption" uppercase style={[styles.onPhoto, styles.onPhotoFaint]}>
             See how it works
           </ThemedText>
-          <ChevronDown size={20} color={colors.textMuted} />
+          <ChevronDown size={20} color={HERO_TEXT_FAINT} />
         </View>
       </View>
 
@@ -179,6 +191,26 @@ export default function LandingScreen() {
 
 const styles = StyleSheet.create({
   hero: { justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  // 0.72 is set by the gold, not the cream: gold is a mid-tone, and this is
+  // what keeps the large gold lines above 3:1 even where they cross a cloud.
+  // The cream text clears 6:1 there.
+  scrim: { backgroundColor: HERO_SCRIM, opacity: 0.72 },
+  // A faint shadow, not a glow: it only matters where the text crosses a
+  // bright cloud, and there it stops the letters dissolving into the sky.
+  onPhoto: {
+    color: HERO_TEXT,
+    textShadowColor: 'rgba(0, 0, 0, 0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  onPhotoSoft: { color: HERO_TEXT_SOFT },
+  onPhotoFaint: { color: HERO_TEXT_FAINT },
+  onPhotoGold: {
+    color: GOLD,
+    textShadowColor: 'rgba(0, 0, 0, 0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
   goldLine: { position: 'absolute', left: 0, right: 0, height: 2, backgroundColor: GOLD },
   heroContent: { paddingHorizontal: Spacing.five, alignItems: 'center' },
   wordmark: { textAlign: 'center' },

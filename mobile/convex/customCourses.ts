@@ -46,7 +46,9 @@ const MAX_COURSES_PER_GOLFER = 50;
 
 async function requireUser(ctx: MutationCtx) {
   const userId = await getAuthUserId(ctx);
-  if (userId === null) {
+  // A deleted account's access token stays valid until it expires, so the
+  // user row is the check that the account still exists.
+  if (userId === null || !(await ctx.db.get(userId))) {
     throw new ConvexError({ message: 'Not authenticated', code: 'UNAUTHENTICATED' });
   }
   return userId;

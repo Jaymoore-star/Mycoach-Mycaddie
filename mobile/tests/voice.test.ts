@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { BAG_ORDER } from '../convex/lib/bag';
 import type { CaddieRecommendation } from '../convex/lib/caddie';
 import { COACH_PROFILES } from '../convex/lib/coachPersona';
+import { MANUAL_CADDIE_CORE } from '../convex/lib/manual';
 import {
   BALL_FLIGHTS,
   CONTACT_TYPES,
@@ -367,5 +368,20 @@ describe('buildCaddieSystemPrompt', () => {
 
     expect(prompt).not.toContain('Current situation');
     expect(prompt).toContain('Alex');
+  });
+});
+
+describe('the manual in the caddie prompt', () => {
+  const CONTEXT = { playerName: 'Alex', skillLabel: 'Intermediate' };
+
+  it('always carries the on-course core, and says the manual wins', () => {
+    const prompt = buildCaddieSystemPrompt(COACH_PROFILES[1], CONTEXT);
+    expect(prompt).toContain(MANUAL_CADDIE_CORE);
+    expect(prompt).toContain('use the manual');
+  });
+
+  it('adds a passage only when there is one', () => {
+    expect(buildCaddieSystemPrompt(COACH_PROFILES[1], CONTEXT, 'PASSAGE')).toContain('PASSAGE');
+    expect(buildCaddieSystemPrompt(COACH_PROFILES[1], CONTEXT)).not.toContain('A passage from the manual');
   });
 });

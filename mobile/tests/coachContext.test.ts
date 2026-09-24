@@ -6,6 +6,7 @@ import {
   type PlayerSnapshot,
 } from '../convex/lib/coachContext';
 import { COACH_PROFILES, getCoachProfile } from '../convex/lib/coachPersona';
+import { MANUAL_CORE, MANUAL_TITLE, manualForQuestion } from '../convex/lib/manual';
 
 /**
  * The briefing is the only thing standing between "your coach knows your game"
@@ -208,5 +209,67 @@ describe('coach roster', () => {
   it('falls back to the level-1 coach for an unknown id', () => {
     expect(getCoachProfile(undefined).id).toBe('que');
     expect(getCoachProfile('nobody').id).toBe('que');
+  });
+});
+
+describe('the manual in the coach prompt', () => {
+  const coach = getCoachProfile('mason');
+
+  it('carries the core of the manual and names it as the authority', () => {
+    const prompt = buildCoachSystemPrompt(coach, FULL, true);
+    expect(prompt).toContain(MANUAL_CORE);
+    expect(prompt).toContain(MANUAL_TITLE);
+    // Mason's persona still speaks the older edition; the prompt has to say
+    // which one wins, or the model splits the difference.
+    expect(prompt).toMatch(/authority/);
+    expect(prompt).toMatch(/P1 to P10/);
+  });
+
+  it('includes the passages it is given, and no empty heading when there are none', () => {
+    const passages = manualForQuestion('I keep slicing my driver', 'putting');
+    expect(buildCoachSystemPrompt(coach, FULL, true, passages)).toContain(passages);
+    expect(buildCoachSystemPrompt(coach, FULL, true)).not.toContain('Passages from the manual');
+  });
+
+  it('builds on Tour Pure for a golfer who has one, and offers a way round it for one who does not', () => {
+    expect(buildCoachSystemPrompt(coach, FULL, true)).toContain('This student trains with Tour Pure');
+    const without = buildCoachSystemPrompt(coach, EMPTY, false);
+    expect(without).toContain('may not own Tour Pure');
+    expect(without).toContain('without it');
+  });
+
+  it('forbids selling beyond what the manual says', () => {
+    const prompt = buildCoachSystemPrompt(coach, EMPTY, false);
+    expect(prompt).toMatch(/never as a\s+sales pitch/);
+    expect(prompt).toMatch(/no\s+prices/);
+  });
+
+  it('stays well inside the per-minute token allowance with passages included', () => {
+    // 30k tokens a minute is shared across every golfer chatting. The system
+    // prompt plus three passages has to leave room for history and replies:
+    // about 4 characters a token, so 24k characters is ~6k tokens.
+    const passages = manualForQuestion('I keep slicing my driver and hitting it fat', 'driver');
+    expect(buildCoachSystemPrompt(coach, FULL, true, passages).length).toBeLessThan(24_000);
+  });
+});
+
+describe('how the coach is told to use the manual', () => {
+  const prompt = buildCoachSystemPrompt(getCoachProfile('sam'), EMPTY, false);
+
+  it('grounds golf answers in the manual and says where they come from', () => {
+    expect(prompt).toContain('Ground every golf answer in it');
+    expect(prompt).toMatch(/the\s+manual's Low Point Drill/);
+  });
+
+  it('says plainly when the manual does not cover something, and does not force it into small talk', () => {
+    expect(prompt).toContain('say plainly that it is not in the manual');
+    expect(prompt).toMatch(/a greeting, a thank-you/);
+  });
+
+  it('stops at pain rather than coaching through it', () => {
+    // The first live run answered "my back hurts" with a swing diagnosis and a
+    // drill. The only right answer is to stop and see someone.
+    expect(prompt).toContain('tell them to stop whatever hurts and see a medical professional');
+    expect(prompt).toContain('do not prescribe drills to work through it');
   });
 });

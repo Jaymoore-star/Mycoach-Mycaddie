@@ -1,6 +1,9 @@
 import { v } from 'convex/values';
 
 import { internalAction, internalMutation } from './_generated/server';
+import { buildCoachSystemPrompt, type PlayerSnapshot } from './lib/coachContext';
+import { getCoachProfile } from './lib/coachPersona';
+import { manualForQuestion } from './lib/manual';
 
 /**
  * Development helpers.
@@ -193,7 +196,16 @@ export const probeIntegrations = internalAction({
             messages: [{ role: 'user', content: 'Reply with the single word: ok' }],
           }),
         });
-        note(`chat ${model}`, r.ok, r.ok ? 'answers' : await fail(r));
+        // Limits are per model and per account tier, so they are read off the
+        // response rather than assumed - they decide how many golfers can
+        // chat in the same minute.
+        const tpm = r.headers.get('x-ratelimit-limit-tokens');
+        const rpm = r.headers.get('x-ratelimit-limit-requests');
+        note(
+          `chat ${model}`,
+          r.ok,
+          r.ok ? `answers; limits ${tpm ?? '?'} tokens/min, ${rpm ?? '?'} requests/min` : await fail(r),
+        );
       } catch (e) {
         note(`chat ${model}`, false, e instanceof Error ? e.message : 'threw');
       }
@@ -303,5 +315,96 @@ export const probeIntegrations = internalAction({
     }
 
     return { ok: results.every((r) => r.ok), results };
+  },
+});
+
+/**
+ * What a coach would say to a golfer with no history, asked `question` -
+ * with the manual passages it would be given - without touching any account.
+ *
+ * For checking that the coach actually teaches from the manual, not just that
+ * the manual is in the prompt: the tests prove the second, only a real reply
+ * proves the first. Costs one chat completion.
+ *
+ *     npx convex run devTools:previewCoachReply '{"question":"How far back for a 50 yard pitch?"}'
+ */
+export const previewCoachReply = internalAction({
+  args: {
+    question: v.string(),
+    coachId: v.optional(
+      v.union(v.literal('que'), v.literal('mason'), v.literal('sam'), v.literal('dom')),
+    ),
+    tourPure: v.optional(v.boolean()),
+    phase: v.optional(v.string()),
+    /** Which chat model to ask - for comparing them on the same questions. */
+    model: v.optional(v.string()),
+    /** Earlier turns, oldest first, for checking how a follow-up is answered. */
+    history: v.optional(
+      v.array(
+        v.object({
+          role: v.union(v.literal('user'), v.literal('assistant')),
+          content: v.string(),
+        }),
+      ),
+    ),
+  },
+  handler: async (_ctx, args) => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('OPENAI_API_KEY is not set on this deployment');
+
+    const phase = (args.phase ?? 'putting') as PlayerSnapshot['currentPhase'];
+    const snapshot: PlayerSnapshot = {
+      displayName: 'Alex',
+      skillLevel: 'intermediate',
+      skillLabel: 'Intermediate',
+      handicapIndex: null,
+      currentDay: 1,
+      currentPhase: phase,
+      targetScore: 80,
+      scoringAvg: null,
+      weeklyGoal: null,
+      tourPureActive: args.tourPure ?? false,
+      recentRounds: [],
+      recentSessions: [],
+      latestSkillTest: null,
+      tendencies: null,
+      latestSwing: null,
+      clubCarries: [],
+    };
+    const history = args.history ?? [];
+    const earlier = history
+      .filter((m) => m.role === 'user')
+      .map((m) => m.content)
+      .reverse()
+      .slice(0, 2);
+    const passages = manualForQuestion(args.question, phase.replace(/_/g, ' '), earlier);
+    const system = buildCoachSystemPrompt(
+      getCoachProfile(args.coachId ?? 'mason'),
+      snapshot,
+      false,
+      passages,
+    );
+
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: args.model ?? process.env.OPENAI_CHAT_MODEL ?? 'gpt-4o',
+        temperature: 0.7,
+        messages: [
+          { role: 'system', content: system },
+          ...history,
+          { role: 'user', content: args.question },
+        ],
+      }),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    const body = (await r.json()) as { choices?: { message?: { content?: string } }[] };
+
+    return {
+      passages: [...passages.matchAll(/^\[[^\]]+ - ([^\]]+)\]$/gm)].map((m) => m[1]),
+      promptChars: system.length,
+      reply: body.choices?.[0]?.message?.content ?? '',
+    };
   },
 });

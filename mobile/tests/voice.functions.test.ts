@@ -70,9 +70,10 @@ describe('the clip cache', () => {
 
   it('hits on a key it has stored, and hands back a playable URL', async () => {
     const t = testApp();
+    const { userId: ownerId } = await signIn(t);
     const storageId = await storeClip(t);
 
-    await t.mutation(internal.voice.saveClip, { key: 'onyx:abc', voice: 'onyx', storageId });
+    await t.mutation(internal.voice.saveClip, { key: 'onyx:abc', voice: 'onyx', storageId, ownerId });
 
     const hit = await t.query(internal.voice.findClip, { key: 'onyx:abc' });
     expect(hit?.url).toBeTruthy();
@@ -80,8 +81,9 @@ describe('the clip cache', () => {
 
   it('treats a clip whose audio is gone as a miss, not a broken URL', async () => {
     const t = testApp();
+    const { userId: ownerId } = await signIn(t);
     const storageId = await storeClip(t);
-    await t.mutation(internal.voice.saveClip, { key: 'onyx:abc', voice: 'onyx', storageId });
+    await t.mutation(internal.voice.saveClip, { key: 'onyx:abc', voice: 'onyx', storageId, ownerId });
 
     await t.run(async (ctx) => ctx.storage.delete(storageId));
 
@@ -90,6 +92,7 @@ describe('the clip cache', () => {
 
   it('keeps the first writer and tells the second to drop its copy', async () => {
     const t = testApp();
+    const { userId: ownerId } = await signIn(t);
     const first = await storeClip(t);
     const second = await storeClip(t);
 
@@ -97,11 +100,13 @@ describe('the clip cache', () => {
       key: 'onyx:same',
       voice: 'onyx',
       storageId: first,
+      ownerId,
     });
     const b = await t.mutation(internal.voice.saveClip, {
       key: 'onyx:same',
       voice: 'onyx',
       storageId: second,
+      ownerId,
     });
 
     // Two golfers on the same hole can ask for the same sentence at once. The
@@ -116,11 +121,12 @@ describe('the clip cache', () => {
 
   it('keys a different voice as a different clip', async () => {
     const t = testApp();
+    const { userId: ownerId } = await signIn(t);
     const onyx = await storeClip(t);
     const echo = await storeClip(t);
 
-    await t.mutation(internal.voice.saveClip, { key: 'onyx:x', voice: 'onyx', storageId: onyx });
-    await t.mutation(internal.voice.saveClip, { key: 'echo:x', voice: 'echo', storageId: echo });
+    await t.mutation(internal.voice.saveClip, { key: 'onyx:x', voice: 'onyx', storageId: onyx, ownerId });
+    await t.mutation(internal.voice.saveClip, { key: 'echo:x', voice: 'echo', storageId: echo, ownerId });
 
     // The same words in two coaches' voices are two recordings.
     const clips = await t.run(async (ctx) => ctx.db.query('voiceClips').collect());

@@ -2,13 +2,14 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import { ChevronDown, ChevronUp, Sparkles, Trash2, Video } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Flag, Sparkles, Trash2, Video } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { api } from '@/convex/_generated/api';
 import type { Doc } from '@/convex/_generated/dataModel';
 import { BAG_ORDER } from '@/convex/lib/bag';
+import { swingAnalysisTarget } from '@/convex/lib/reports';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,6 +17,8 @@ import { Screen } from '@/components/ui/screen';
 import { ThemedText } from '@/components/ui/text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { errorMessage } from '@/lib/errors';
+import { reportAiContent, useReportedTargets } from '@/lib/report';
 
 const MAX_SECONDS = 15;
 
@@ -108,6 +111,11 @@ export default function SwingScreen() {
   const saveRecording = useAction(api.swingVideos.saveRecording);
   const deleteRecording = useMutation(api.swingVideos.deleteRecording);
   const analyzeSwing = useAction(api.swingVideos.analyzeSwing);
+  const reportSwingAnalysis = useMutation(api.reports.reportSwingAnalysis);
+  const reported = useReportedTargets();
+  const analysisReported = (video: Doc<'swingVideos'>) =>
+    !!video.aiFeedback &&
+    reported.has(swingAnalysisTarget(video._id, video.aiFeedback.analyzedAt));
 
   const [label, setLabel] = useState<string>('Driver');
   const [busy, setBusy] = useState(false);
@@ -207,8 +215,14 @@ export default function SwingScreen() {
   async function capture(mode: 'camera' | 'library') {
     if (!profile) return;
 
-    const permission =
-      mode === 'camera'
+    // Android's system photo picker needs no permission at all. Asking for one
+    // anyway requests the storage permission on Android 12 and below, which
+    // the app does not declare - so Android refused without a dialog and the
+    // library button did nothing. iOS still wants photo access up front.
+    const needsPermission = mode === 'camera' || Platform.OS === 'ios';
+    const permission = !needsPermission
+      ? { granted: true }
+      : mode === 'camera'
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -225,11 +239,23 @@ export default function SwingScreen() {
     const picker =
       mode === 'camera' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync;
 
-    const result = await picker({
-      mediaTypes: ['videos'],
-      videoMaxDuration: MAX_SECONDS,
-      quality: 1,
-    });
+    // A device with no camera app, or no gallery, throws here rather than
+    // returning - and an unhandled rejection is a button that does nothing.
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await picker({
+        mediaTypes: ['videos'],
+        videoMaxDuration: MAX_SECONDS,
+        quality: 1,
+      });
+    } catch (error) {
+      console.error('[swing picker]', error);
+      Alert.alert(
+        mode === 'camera' ? 'Could not open the camera' : 'Could not open your videos',
+        errorMessage(error, 'Please try again.'),
+      );
+      return;
+    }
 
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
@@ -464,6 +490,31 @@ export default function SwingScreen() {
                 {v.aiFeedback.drills.length > 0 && (
                   <FeedbackList title="Drills" items={v.aiFeedback.drills} />
                 )}
+
+                {/* Google Play requires a way to flag what the AI wrote. */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    analysisReported(v)
+                      ? 'You have reported this analysis'
+                      : `Report the analysis of this ${v.label} swing`
+                  }
+                  onPress={() =>
+                    reportAiContent((reason) => reportSwingAnalysis({ videoId: v._id, reason }), {
+                      alreadyReported: analysisReported(v),
+                    })
+                  }
+                  hitSlop={10}
+                  style={styles.report}>
+                  <Flag
+                    size={13}
+                    color={colors.textMuted}
+                    fill={analysisReported(v) ? colors.textMuted : 'transparent'}
+                  />
+                  <ThemedText variant="caption" tone="muted">
+                    {analysisReported(v) ? 'Reported' : 'Report this analysis'}
+                  </ThemedText>
+                </Pressable>
               </View>
             )}
 
@@ -529,4 +580,11 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   feedbackList: { gap: 2, marginTop: Spacing.two },
+  report: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    marginTop: Spacing.three,
+    alignSelf: 'flex-start',
+  },
 });

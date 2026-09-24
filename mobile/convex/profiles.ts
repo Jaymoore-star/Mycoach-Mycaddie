@@ -45,6 +45,9 @@ export const createProfile = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error('Not signed in');
+    // A deleted account's access token stays valid until it expires; without
+    // this, a second device could give the deleted user a fresh profile.
+    if (!(await ctx.db.get(userId))) throw new Error('Not signed in');
 
     const existing = await ctx.db
       .query('golferProfiles')

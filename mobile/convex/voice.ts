@@ -43,6 +43,7 @@ import {
   type CoachId,
 } from './lib/coachLevels';
 import { getCoachProfile } from './lib/coachPersona';
+import { manualExcerpts } from './lib/manual';
 import {
   LIVE_VAD,
   SHOT_PARSE_SYSTEM_PROMPT,
@@ -185,12 +186,18 @@ export const findClip = internalQuery({
  * Two golfers on the same hole can ask for the same sentence at the same
  * moment. Both synthesise, both arrive here; the second is told to drop its
  * copy rather than leaving an unreferenced blob in storage forever.
+ *
+ * The golfer who caused the synthesis owns the clip, because the text is not
+ * always impersonal: "Hear it" on a coaching reply speaks a sentence built from
+ * their own name and rounds. Deleting the account deletes what they own; a
+ * later golfer asking for the same words simply pays for them again.
  */
 export const saveClip = internalMutation({
   args: {
     key: v.string(),
     voice: v.string(),
     storageId: v.id('_storage'),
+    ownerId: v.id('users'),
   },
   handler: async (ctx, args): Promise<{ kept: boolean; storageId: Id<'_storage'> }> => {
     const existing = await ctx.db
@@ -204,6 +211,7 @@ export const saveClip = internalMutation({
       key: args.key,
       voice: args.voice,
       storageId: args.storageId,
+      ownerId: args.ownerId,
       createdAt: Date.now(),
     });
     return { kept: true, storageId: args.storageId };
@@ -215,6 +223,7 @@ async function synthesise(
   ctx: ActionCtx,
   text: string,
   coachId: CoachId,
+  ownerId: Id<'users'>,
 ): Promise<{ url: string }> {
   const apiKey = requireApiKey();
   const coach = getCoachProfile(coachId);
@@ -261,7 +270,12 @@ async function synthesise(
     new Blob([await audio.arrayBuffer()], { type: 'audio/mpeg' }),
   );
 
-  const saved = await ctx.runMutation(internal.voice.saveClip, { key, voice, storageId });
+  const saved = await ctx.runMutation(internal.voice.saveClip, {
+    key,
+    voice,
+    storageId,
+    ownerId,
+  });
   if (!saved.kept) await ctx.storage.delete(storageId);
 
   const url = await ctx.storage.getUrl(saved.storageId);
@@ -285,8 +299,8 @@ export const speak = action({
     coachId: v.optional(coachIdValidator),
   },
   handler: async (ctx, args): Promise<{ url: string }> => {
-    await requireUser(ctx);
-    return await synthesise(ctx, args.text, args.coachId ?? DEFAULT_COACH_ID);
+    const userId = await requireUser(ctx);
+    return await synthesise(ctx, args.text, args.coachId ?? DEFAULT_COACH_ID, userId);
   },
 });
 
@@ -585,7 +599,7 @@ export const askCaddie = action({
     speak: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<{ text: string; url: string | null }> => {
-    await requireUser(ctx);
+    const userId = await requireUser(ctx);
     const apiKey = requireApiKey();
 
     const transcript = args.transcript.trim();
@@ -602,6 +616,9 @@ export const askCaddie = action({
     }
 
     const coach = getCoachProfile(speaker.coachId);
+    // One manual section at most: the answer is two spoken sentences, and
+    // gpt-4o-mini does better with one clear passage than three competing ones.
+    const passage = manualExcerpts(transcript, 1800, 1);
     const system = buildCaddieSystemPrompt(coach, {
       playerName: speaker.displayName,
       skillLabel: speaker.skillLabel,
@@ -614,7 +631,7 @@ export const askCaddie = action({
       ...(args.primaryClub !== undefined ? { primaryClub: args.primaryClub } : {}),
       ...(args.adjustedYardage !== undefined ? { adjustedYardage: args.adjustedYardage } : {}),
       ...(args.aimAdjustment !== undefined ? { aimAdjustment: args.aimAdjustment } : {}),
-    });
+    }, passage);
 
     // 120 tokens is about three spoken sentences - past the two the prompt
     // asks for, so a sensible answer is never cut off mid-word.
@@ -623,7 +640,7 @@ export const askCaddie = action({
 
     if (!args.speak) return { text, url: null };
 
-    const { url } = await synthesise(ctx, text, speaker.coachId);
+    const { url } = await synthesise(ctx, text, speaker.coachId, userId);
     return { text, url };
   },
 });
@@ -664,7 +681,7 @@ export const getSessionForReadAloud = internalQuery({
 export const readAloudSession = action({
   args: { sessionId: v.id('launchSessions') },
   handler: async (ctx, args): Promise<{ text: string; url: string }> => {
-    await requireUser(ctx);
+    const userId = await requireUser(ctx);
 
     const found = await ctx.runQuery(internal.voice.getSessionForReadAloud, {
       sessionId: args.sessionId,
@@ -698,7 +715,7 @@ export const readAloudSession = action({
       })),
     );
 
-    const { url } = await synthesise(ctx, text, found.coachId);
+    const { url } = await synthesise(ctx, text, found.coachId, userId);
     return { text, url };
   },
 });

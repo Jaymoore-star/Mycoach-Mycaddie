@@ -7,6 +7,7 @@ import { ConvexError, v } from 'convex/values';
 import { components, internal } from './_generated/api';
 import type { Doc, Id } from './_generated/dataModel';
 import {
+  type ActionCtx,
   type MutationCtx,
   type QueryCtx,
   internalAction,
@@ -21,6 +22,8 @@ import { DEFAULT_COACH_ID, type CoachId } from './lib/coachLevels';
 import { getCoachProfile } from './lib/coachPersona';
 import { SKILL_LABELS } from './lib/curriculum';
 import { handicapIndex, scoreDifferential } from './lib/handicap';
+import { manualForQuestion } from './lib/manual';
+import { isRateLimited } from './lib/openaiErrors';
 
 /**
  * Conversational coaching.
@@ -35,18 +38,30 @@ import { handicapIndex, scoreDifferential } from './lib/handicap';
  * from the client, so a valid id is not permission.
  */
 
-/** Chat is text-only and short-turn, so the cheap fast model is the right one. */
+/**
+ * gpt-4o writes the replies; gpt-4o-mini stands in when gpt-4o is out of
+ * allowance for the minute.
+ *
+ * OpenAI rate limits are per model. Measured on this account (see
+ * `devTools:probeIntegrations`): gpt-4o 30k tokens a minute, gpt-4o-mini 200k.
+ * A coach turn is ~3k tokens, and one 24-frame swing analysis spends most of
+ * gpt-4o's minute on its own. Mini alone was tried on the same twenty
+ * questions and was measurably less faithful to the manual - it put a 70-yard
+ * pitch at three-quarter swing, and slipped back to "hip bump" and P-numbers -
+ * so it is the fallback, not the default. A golfer on a busy minute gets a
+ * slightly weaker answer instead of "try again later".
+ */
 const DEFAULT_CHAT_MODEL = 'gpt-4o';
+const DEFAULT_FALLBACK_CHAT_MODEL = 'gpt-4o-mini';
 
 /**
  * How much conversation goes back to the model each turn.
  *
- * The system briefing alone is ~600-900 tokens, and the account's allowance is
- * 30k tokens per minute (see OPENAI_MAX_FRAMES in swingVideos.ts for the same
- * constraint). Twenty messages keeps a long session comfortably inside it
- * while still remembering the thread of the conversation.
+ * Twelve messages is six exchanges - enough for the coach to follow the
+ * thread - and every turn of history is paid for again on every reply, which
+ * is what decides how many golfers fit in gpt-4o's minute.
  */
-const RECENT_MESSAGES = 20;
+const RECENT_MESSAGES = 12;
 
 /** Long enough to describe a miss in detail, short enough to bound the cost. */
 const MAX_PROMPT_CHARS = 2000;
@@ -65,6 +80,13 @@ const STREAM_FLUSH_CHARS = 24;
 const coachAgent = new Agent(components.agent, {
   name: 'Dominus Coach',
   languageModel: openai.chat(process.env.OPENAI_CHAT_MODEL ?? DEFAULT_CHAT_MODEL),
+});
+
+const fallbackCoachAgent = new Agent(components.agent, {
+  name: 'Dominus Coach',
+  languageModel: openai.chat(
+    process.env.OPENAI_FALLBACK_CHAT_MODEL ?? DEFAULT_FALLBACK_CHAT_MODEL,
+  ),
 });
 
 const coachIdValidator = v.union(
@@ -194,6 +216,7 @@ export const sendMessage = mutation({
       promptMessageId: messageId,
       profileId: args.profileId,
       coachId,
+      question: prompt,
     });
 
     return null;
@@ -457,12 +480,39 @@ export const saveFailureNotice = internalAction({
 
 // ─── Generating the reply ────────────────────────────────────────────────────
 
+/**
+ * The golfer's two questions before this one, newest first. Only theirs - the
+ * coach's replies would steer the manual search toward whatever it already
+ * said, not toward what the golfer is asking about.
+ */
+async function earlierQuestions(
+  ctx: ActionCtx,
+  threadId: string,
+  currentMessageId: string,
+): Promise<string[]> {
+  const page = await coachAgent.listMessages(ctx, {
+    threadId,
+    paginationOpts: { numItems: 8, cursor: null },
+    excludeToolMessages: true,
+  });
+  return page.page
+    .filter((m) => m._id !== currentMessageId && m.message?.role === 'user' && m.text)
+    .slice(0, 2)
+    .map((m) => m.text!);
+}
+
 export const generateReply = internalAction({
   args: {
     threadId: v.string(),
     promptMessageId: v.string(),
     profileId: v.id('golferProfiles'),
     coachId: coachIdValidator,
+    /**
+     * The question as typed, for finding the manual sections that answer it.
+     * Optional so a reply already queued when this shipped still runs, just
+     * without passages.
+     */
+    question: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<null> => {
     if (!process.env.OPENAI_API_KEY) {
@@ -487,10 +537,21 @@ export const generateReply = internalAction({
       snapshot.tendencies !== null ||
       snapshot.latestSwing !== null;
 
+    // A follow-up falls back to what it follows, and a vague question to the
+    // phase they are in - see manualForQuestion.
+    const passages = args.question
+      ? manualForQuestion(
+          args.question,
+          snapshot.currentPhase.replace(/_/g, ' '),
+          await earlierQuestions(ctx, args.threadId, args.promptMessageId),
+        )
+      : '';
+
     const system = buildCoachSystemPrompt(
       getCoachProfile(args.coachId),
       snapshot,
       hasData,
+      passages,
     );
 
     // Opened before the request so the screen has something to show from the
@@ -500,11 +561,26 @@ export const generateReply = internalAction({
       profileId: args.profileId,
     });
 
-    try {
-      const result = await coachAgent.streamText(
+    /**
+     * Streams one attempt into the draft row. Returns what was written and the
+     * error, if any - the AI SDK reports a failed request through `onError`
+     * and simply ends the stream, so a rate-limited reply does not throw; it
+     * arrives as an empty stream with an error beside it.
+     */
+    const attempt = async (agent: Agent, maxRetries: number) => {
+      let streamError: unknown = null;
+      const result = await agent.streamText(
         ctx,
         { threadId: args.threadId },
-        { promptMessageId: args.promptMessageId, system, temperature: 0.7 },
+        {
+          promptMessageId: args.promptMessageId,
+          system,
+          temperature: 0.7,
+          maxRetries,
+          onError: ({ error }: { error: unknown }) => {
+            streamError = error;
+          },
+        },
         { contextOptions: { recentMessages: RECENT_MESSAGES, excludeToolMessages: true } },
       );
 
@@ -538,7 +614,28 @@ export const generateReply = internalAction({
       // Draining the stream is what makes the agent store the finished
       // message. Without it a reply the golfer watched being written would
       // vanish when the draft is cleared.
-      await result.consumeStream();
+      try {
+        await result.consumeStream();
+      } catch (e) {
+        streamError ??= e;
+      }
+      return { text, error: streamError };
+    };
+
+    try {
+      // One quick retry on gpt-4o, not the SDK's default two with backoff: a
+      // minute's allowance does not come back in two seconds, and the
+      // fallback is waiting.
+      let outcome = await attempt(coachAgent, 1);
+
+      // Only when nothing was written yet: switching model halfway through a
+      // reply would hand the golfer half of one answer and all of another.
+      if (outcome.error && outcome.text.length === 0 && isRateLimited(outcome.error)) {
+        console.warn('[coachChat.generateReply] gpt-4o rate limited, answering with the fallback');
+        outcome = await attempt(fallbackCoachAgent, 2);
+      }
+
+      if (outcome.error && outcome.text.length === 0) throw outcome.error;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error('[coachChat.generateReply]', message);
@@ -546,8 +643,9 @@ export const generateReply = internalAction({
       await ctx.runAction(internal.coachChat.saveFailureNotice, {
         threadId: args.threadId,
         // Rate limiting is the one failure the golfer can actually act on, so
-        // it does not get flattened into the generic retry message.
-        text: /rate limit|429/i.test(message)
+        // it does not get flattened into the generic retry message. Reaching
+        // here means the fallback was out of allowance too.
+        text: isRateLimited(error)
           ? 'Your coach is over the account rate limit right now - give it a minute and ask again.'
           : 'Your coach could not answer that one - please try again.',
       });

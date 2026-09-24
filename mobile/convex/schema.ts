@@ -407,14 +407,48 @@ export default defineSchema({
    * audio on every hole. Keyed by voice plus the exact text, so a change to
    * either is simply a different clip rather than a stale one.
    *
-   * Not owned by a golfer on purpose: the text is generated from public course
-   * data and the caddie's own script, holds nothing personal, and sharing the
-   * cache across accounts is the whole point.
+   * Shared across accounts - that is the whole point - but not ownerless.
+   * Most lines come from public course data, but "Hear it" on a coaching reply
+   * speaks a sentence written about one golfer, with their name and rounds in
+   * it. `ownerId` is whoever caused the synthesis, so deleting an account takes
+   * their clips with it. Optional only because older clips have none.
    */
   voiceClips: defineTable({
     key: v.string(), // `${voice}:${sha256(text)}`
     voice: v.string(),
     storageId: v.id('_storage'),
+    ownerId: v.optional(v.id('users')),
     createdAt: v.number(),
-  }).index('by_key', ['key']),
+  })
+    .index('by_key', ['key'])
+    .index('by_owner', ['ownerId']),
+
+  /**
+   * A golfer flagging something the AI said.
+   *
+   * Google Play requires apps that generate content with AI to let users
+   * report it. The flagged text is copied in at the moment of the report,
+   * because the original can be wiped (a cleared conversation, a re-analysed
+   * swing) and a report pointing at nothing cannot be reviewed. Read from the
+   * Convex dashboard; there is no in-app moderation queue.
+   */
+  contentReports: defineTable({
+    userId: v.id('users'),
+    kind: v.union(
+      v.literal('coach_message'),
+      v.literal('swing_analysis'),
+      v.literal('caddie_answer'),
+    ),
+    /** What was reported: the agent message id, `<videoId>:<analyzedAt>` for
+     *  an analysis, or `caddie:<hash>` for a caddie answer, which is never
+     *  stored. Optional only for reports filed before it was always set. */
+    targetId: v.optional(v.string()),
+    content: v.string(),
+    /** Two, because an Android alert holds only three buttons with Cancel. */
+    reason: v.union(v.literal('harmful'), v.literal('inaccurate')),
+    createdAt: v.number(),
+  })
+    // One report per golfer per response, and the daily cap - see reports.ts.
+    .index('by_user_and_target', ['userId', 'targetId'])
+    .index('by_user_and_created', ['userId', 'createdAt']),
 });

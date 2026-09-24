@@ -12,6 +12,8 @@ import {
   mutation,
   query,
 } from './_generated/server';
+import { swingAnalysisGuide } from './lib/manual';
+import { CHECKPOINT_LABELS, cleanObservations } from './lib/swingObservations';
 
 async function ownedProfile(ctx: QueryCtx | MutationCtx, profileId: Id<'golferProfiles'>) {
   const userId = await getAuthUserId(ctx);
@@ -335,6 +337,8 @@ work through setup and posture, spine angle, stance width, arm structure, shaft 
 position at the top, hip and shoulder rotation, head movement frame to frame, weight
 transfer, and balance at the finish.
 
+${swingAnalysisGuide(video.label)}
+
 Rules you must follow:
 - Describe only what you can genuinely see. At 10 frames per second the exact moment of
   impact can still fall between two frames; say so rather than inferring it.
@@ -350,13 +354,7 @@ Respond with pure JSON, no markdown, in exactly this shape:
 {
   "summary": "2-3 sentences on what this swing actually shows",
   "observations": [
-    {"position": "Address", "detail": "what is visible at setup"},
-    {"position": "Takeaway", "detail": "..."},
-    {"position": "Halfway back", "detail": "..."},
-    {"position": "Top of backswing", "detail": "..."},
-    {"position": "Transition", "detail": "..."},
-    {"position": "Impact", "detail": "..."},
-    {"position": "Finish", "detail": "..."}
+${CHECKPOINT_LABELS.map((label) => `    {"position": "${label}", "detail": "what is visible at this checkpoint"}`).join(',\n')}
   ],
   "strengths": ["something this swing genuinely does well", "..."],
   "improvements": ["highest priority fix visible in these frames", "..."],
@@ -371,6 +369,8 @@ A golfer logged a swing recording with the club "${video.label}".${notes}
 You have NOT seen the video - no frames were available. Do not claim to have watched it
 and do not describe what their swing looked like. Give the coaching points that matter
 most for this club, written so they can check each against their own recording.
+
+${swingAnalysisGuide(video.label)}
 
 Respond with pure JSON, no markdown, in exactly this shape:
 {
@@ -433,12 +433,7 @@ Keep every point under 25 words.`;
           improvements: Array.isArray(parsed.improvements) ? parsed.improvements.slice(0, 5) : [],
           drills: Array.isArray(parsed.drills) ? parsed.drills.slice(0, 3) : [],
           analyzedAt: new Date().toISOString(),
-          observations: Array.isArray(parsed.observations)
-            ? parsed.observations
-                .filter((o) => typeof o?.detail === 'string' && o.detail.length > 0)
-                .slice(0, 8)
-                .map((o) => ({ position: o.position ?? 'Swing', detail: o.detail as string }))
-            : undefined,
+          observations: cleanObservations(parsed.observations),
           basis: grounded ? ('video' as const) : ('club' as const),
         },
       });

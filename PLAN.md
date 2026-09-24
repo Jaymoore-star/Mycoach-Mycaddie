@@ -59,7 +59,34 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 
 ## Resume here
 
-**Last worked: 18 September 2026. The app is feature-complete and
+**Last worked: 24 September 2026 - Google Play prep and the Dominus manual in
+the AI. All committed. 652 tests pass, lint and typecheck clean.** Details in
+"Play Store prep" below. Where things stand:
+
+- **Play Console:** Dominus Golf organisation account exists (owner: Jay).
+  Jeet cannot accept the Play app signing terms - Jay has to click **Create
+  app** himself (name `MyCoach / MyCaddie`, package
+  `com.dominusgolf.mycoachmycaddie`, English (US), App, Free) and give Jeet
+  Admin. Every other answer for the console is in
+  `mobile/store-assets/PLAY_CONSOLE.md`, with the icon and feature graphic.
+- **Builds:** test APK is build 7 (version code 7). The production `.aab` with
+  version code 6 has the Swing gallery bug - **do not upload it**; build a new
+  one with `eas build -p android --profile production` once testing is done.
+- **Prod backend:** deployed up to the "one report per response" change. The
+  manual-in-AI work, the gpt-4o-mini fallback and the eight-checkpoint swing
+  fix were pushed to **dev only** - run `npx convex deploy` to put them live.
+  An OTA update (`eas update --channel preview`) went to build 7 on 24 Sep;
+  set `EXPO_PUBLIC_CONVEX_URL` / `EXPO_PUBLIC_CONVEX_SITE_URL` to prod before
+  any `eas update`, or it bundles the dev URLs from `.env.local`.
+- **Waiting on Jay:** (1) create the app in Play Console; (2) whether the drill
+  program should be rewritten to the new manual (see "The Dominus Golf manual in
+  the AI"); (3) raise the OpenAI usage tier before the public listing; (4)
+  Samantha's email - DNS is correct, likely POP vs IMAP on her devices.
+- **Next for Jeet:** deploy, re-test a real swing clip (all eight letters),
+  store screenshots from BlueStacks at 1080x1920, then the production `.aab`
+  and Internal testing.
+
+**Before that: 18 September 2026. The app is feature-complete and
 release-shaped: real brand assets, valid native config, an EAS build profile,
 course data from published scorecards, one account per email, and a seeded demo
 golfer live on prod. 547 tests pass, lint is clean, and both bundles export.
@@ -772,6 +799,203 @@ well, so a longer coach name can never bring the wrap back.
 The clearance above the tab bar was fine.
 
 Still not verified on a device: the My Courses form on a small screen.
+
+## Play Store prep — 23 September 2026
+
+The boss wants the app on Google Play. The `production` profile already builds
+an `.aab`; what was missing was everything Play *policy* requires. Uncommitted.
+565 tests pass, lint and typecheck clean, the Android bundle exports.
+
+### Account deletion (Play requirement)
+
+Any app that lets people sign up must let them delete the account in the app,
+and offer a web page for people who no longer have it installed.
+
+**Profile → Delete Account.** `account.deleteMyAccount` removes the user row,
+every sign-in method, session, refresh token and auth rate-limit row in one
+transaction - signed out everywhere at once - and asks the agent component to
+delete every coach thread for that user id. `account.purgeUserData` then deletes
+the golf data 50 rows at a time, one table per run, rescheduling itself until
+empty, children before the profile. Stored files go with their rows.
+
+Two things this turned up:
+
+- **Voice clips were ownerless, and not all impersonal.** The cache assumed
+  every spoken line came from course data. "Hear it" on a coaching reply speaks
+  a sentence with the golfer's name and rounds in it. `voiceClips.ownerId` is
+  now whoever caused the synthesis, and deletion takes their clips. Clips cached
+  before this have no owner and are kept.
+- **A deleted account's access token outlives it by up to an hour** -
+  `getAuthUserId` only parses the JWT. A second device could have onboarded
+  again and given a deleted user a new profile. `createProfile` and custom
+  course creation now check the user row exists; every other write already
+  needs a profile.
+
+### Reporting AI content (Play requirement)
+
+Play's AI-generated content policy requires an in-app way to flag offensive
+output. Three places show model-written text, and each has a Report action:
+coach chat replies, swing analysis, and the caddie's answer on the round screen.
+Reports land in `contentReports` with the text copied in. **Read them from the
+Convex dashboard** - there is no moderation screen. Two reasons only (harmful,
+inaccurate): an Android alert holds three buttons including Cancel.
+
+Chat and swing reports check ownership, because copying text into a report is
+a read - otherwise anyone could read a conversation by reporting its ids. The
+caddie answer is never stored, so the device sends back what it showed.
+
+### Permissions trimmed
+
+`expo-audio` enables background playback by default, which adds
+`FOREGROUND_SERVICE_MEDIA_PLAYBACK` and a `mediaPlayback` service - and Play
+makes you justify a media-playback foreground service with a video. Nothing
+plays in the background, so it is off. Also blocked: `READ_EXTERNAL_STORAGE` and
+`SYSTEM_ALERT_WINDOW` (dev overlay only).
+
+**Blocking storage broke My Swing, found in the first BlueStacks pass.**
+`WRITE_EXTERNAL_STORAGE` was blocked too at first, and the Swing screen called
+`requestMediaLibraryPermissionsAsync()` before opening the gallery. On Android
+12 and below that asks for the storage permissions - which the manifest no
+longer declared, so Android refused without a dialog and neither button did
+anything. Now: Android skips the library permission entirely (the system photo
+picker needs none; iOS still asks), `WRITE_EXTERNAL_STORAGE` is back - the
+camera needs it below Android 10, and the plugin caps it at `maxSdkVersion=32`
+- and a picker that throws shows an alert instead of failing silently. Neither
+is a restricted permission in Play's eyes; only `READ_MEDIA_IMAGES/VIDEO` are.
+
+**The production `.aab` with version code 6 has this bug - do not upload it.**
+
+### Reports are one per golfer per response
+
+Found in the BlueStacks pass: the same reply could be reported endlessly. Now
+`contentReports` is keyed by `(userId, targetId)` - the message id,
+`<videoId>:<analyzedAt>` for a swing (a re-analysis is new advice), or a
+SHA-256 of the exchange for a caddie answer, which has no id. A repeat returns
+`alreadyReported: true` and the app says so. Plus 30 reports per golfer per
+24 hours, because the caddie report carries text the device supplies.
+
+### The landing hero was unreadable in light mode
+
+It was scrimmed with the *theme* background - cream at 62% in light mode - so
+the photo went milky and the grey tagline sat on it at about 2:1. It is a
+charcoal scrim at 0.72 with fixed light text in both themes now, measured
+against the photo: the cream text clears 6:1 over the brightest cloud, and the
+large gold lines clear 3:1. The opacity is set by the gold, not the cream.
+
+### The Dominus Golf manual in the AI (24 September)
+
+Jay asked for the updated manual - "The Ultimate Guide to Master the Game, Tour
+Pure Edition", `reference/Ultimate_Guide_to_Master_the_Game_Tour_Pure_Edition.pdf`
+- to be in the app, "so the AI understands what Dominus Golf and the Tour Pure
+can do to support their development".
+
+It is 53 pages, about 20k tokens: far too much to send with every reply on a
+30k-TPM account. So:
+
+- `convex/lib/manualContent.ts` - the book as 45 sections, text verbatim except
+  what PDF extraction broke (tables rebuilt a row per line, diagrams turned into
+  a sentence, page headers gone).
+- `convex/lib/manual.ts` - `MANUAL_CORE`, a page condensed from the book that
+  every coach prompt carries (Tour Pure, the eight letters, Club Map, weight by
+  shot, wedge clock, the 100 Rule, every named drill **with its reps**), and
+  `searchManual`, BM25 keyword scoring over the sections with a golfer-words
+  synonym table. No embeddings, no extra API call, deterministic, tested.
+- The coach gets the core plus up to three passages for the question; a vague
+  question falls back to the golfer's phase. The caddie gets a short on-course
+  core plus one passage. Swing analysis judges against the letter checkpoints
+  and the club's Club Map letter, and names observations by letter.
+- Rules in the prompt: the manual is the authority; mention Tour Pure only when
+  it helps, never as a pitch, never with a price or a claim the book does not
+  make; a golfer without one always gets a way to do the drill without it.
+
+Checked against the real model on dev with `devTools:previewCoachReply`, which
+builds the exact coach prompt for a blank golfer. The first run caught the
+coach naming the 9 O'Clock to 3 O'Clock Drill and inventing "10 reps" - the book
+says 5 sets of 20 - which is why the core now carries every drill's numbers.
+
+Cost: the coach prompt went from roughly 5k to 13-14k characters, about 2.5k
+more tokens a message. That is fractions of a cent each, but it is also less
+headroom under the 30k TPM cap when several golfers chat at once.
+
+**Grounding, checked with 20 questions against the real model.** The coach
+says where advice comes from ("the manual's Low Point Drill", "Chapter 3 covers
+bunkers"), says plainly when something is not in the manual (shaft flex, the
+rules), and leaves small talk alone. `manualForQuestion` reads a short
+follow-up ("how many reps?") together with the golfer's previous question -
+on its own words "reps" matched the mastery timeline. The first run of the 20
+also caught: the Low Point Drill prescribed for a slice (the core now says which
+drill fixes which fault), "70 yards is a three-quarter swing" (it is a half; the
+core now says so, and never to fix a yardage to a clock position), a water
+carry answered as "not in the manual" (synonyms now reach course management),
+and "my back hurts" answered with a swing diagnosis (the rule is now stop and
+see someone). The harness: `devTools:previewCoachReply`, which takes a
+`history` for follow-ups.
+
+**Rate limit.** Twenty questions in two minutes hit OpenAI's cap: three
+failed. Limits are per model, and `devTools:probeIntegrations` now prints them:
+gpt-4o **30k** tokens a minute, gpt-4o-mini **200k**. What was done within that:
+
+- **The coach falls back to gpt-4o-mini when gpt-4o is out of allowance**,
+  instead of answering "try again later". Only a rate limit before any text is
+  written triggers it; any other error still shows as an error. Mini was
+  evaluated on the same twenty questions and is measurably less faithful to the
+  manual (70 yards as a three-quarter swing, "hip bump", P-numbers), which is
+  why it is the fallback and not the default. Tested with fake models in
+  `coachFallback.functions.test.ts`.
+- **Found on the way: the "over the rate limit" notice had probably never shown.**
+  The AI SDK does not throw on a failed request - it ends the stream empty and
+  reports to `onError` - so a rate-limited reply most likely ended empty and was
+  filtered out of the chat. The reply code now reads `onError`.
+- History sent per turn 20 → 12 messages; manual passages 5000 → 3500 chars.
+
+Raising the OpenAI usage tier is still the real fix before the listing is
+public - it is a billing setting, not code.
+
+**Open - needs a decision from Jay.** The drill program (`curriculum.ts`, 77 P-number
+references), the coach personas and the onboarding screen were written against
+an earlier edition: P1-P10 positions, a "hip bump", and a wedge clock of
+8:00 / 9:00 / 10:00. The new book uses the eight TOUR PURE letters, "plant the
+lead side and turn the belt buckle", and 7:30 / 9:00 / 10:30. The AI now
+teaches the new book and translates the old terms, but the drill cards on
+screen still show the old ones - and the wedge numbers contradict each other.
+Rewriting the program to the book's Chapter 8 is a bigger job than the AI part
+and changes what golfers see every day.
+
+### Legal pages
+
+Served by the deployment itself, from `convex/legal.ts`:
+
+- `https://precise-wren-85.convex.site/privacy`
+- `https://precise-wren-85.convex.site/delete-account`
+
+Both go in the Play Console listing. **Set `SUPPORT_EMAIL` on prod before
+submitting** - until it is set, both pages show a red "Draft - not for
+publication" banner:
+
+```bash
+npx convex env set SUPPORT_EMAIL support@... --prod
+npx convex deploy
+```
+
+The policy text is written to match the code - what is collected, and that it
+goes to Convex, OpenAI, Google and Expo. **Any feature that collects something
+new has to change `legal.ts` and the Play Data safety form in the same change.**
+Have someone at the company read it before it is published.
+
+### Still to do before submitting
+
+- [ ] Deploy to prod (`npx convex deploy`) - the new tables, routes and
+      functions are only on dev until then. The next APK/AAB needs this too.
+- [ ] `SUPPORT_EMAIL` on prod, and the policy reviewed.
+- [ ] Publish the Google OAuth app to Production. Testing mode caps the app at
+      100 Google accounts for its lifetime - fine for a demo, not for a store.
+- [ ] Play Console account (boss: organization account, D-U-N-S number).
+- [ ] Store listing: descriptions, 512px icon, 1024x500 feature graphic,
+      screenshots, Data safety form, content rating, App access (the demo
+      login for Google's reviewers).
+- [ ] `eas build -p android --profile production`, first upload by hand,
+      internal testing track, then production.
+- [ ] Try Delete Account and all three Report actions on a real device.
 
 ## Build order
 

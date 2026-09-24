@@ -36,6 +36,7 @@ import { FontSize, GOLD, Radius, Spacing } from '@/constants/theme';
 import { useCourse } from '@/hooks/use-courses';
 import { useTheme } from '@/hooks/use-theme';
 import { useSpeech, voiceErrorMessage } from '@/hooks/use-voice';
+import { reportAiContent } from '@/lib/report';
 
 const NO_TENDENCIES: TendencyProfile = {
   dominantMiss: null,
@@ -220,6 +221,7 @@ export default function RoundScreen() {
   const coachId = profile?.coachId as CoachId | undefined;
   const speech = useSpeech(coachId);
   const askCaddie = useAction(api.voice.askCaddie);
+  const reportCaddieAnswer = useMutation(api.reports.reportCaddieAnswer);
 
   /**
    * Which line the one speech hook is currently reading.
@@ -232,6 +234,10 @@ export default function RoundScreen() {
 
   const [heard, setHeard] = useState('');
   const [caddieAnswer, setCaddieAnswer] = useState('');
+  // A caddie answer is never stored, so there is nothing to look up: the
+  // screen remembers reporting the answer it is showing, and a new question
+  // clears it. The server still refuses a duplicate if this is lost.
+  const [answerReported, setAnswerReported] = useState(false);
   const [asking, setAsking] = useState(false);
 
   // A plain function, not a `useCallback`: the React Compiler is on for this
@@ -243,6 +249,7 @@ export default function RoundScreen() {
 
     setHeard(transcript);
     setCaddieAnswer('');
+    setAnswerReported(false);
     setAsking(true);
     try {
       // The caddie hears the same situation the card was built from, so its
@@ -630,6 +637,23 @@ export default function RoundScreen() {
                   onStop={stopSpeaking}
                   style={styles.speakButton}
                 />
+                {/* Google Play requires a way to flag what the AI wrote. No
+                    flag icon: on this screen a flag is the pin. */}
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    reportAiContent(
+                      (reason) =>
+                        reportCaddieAnswer({ question: heard, answer: caddieAnswer, reason }),
+                      { alreadyReported: answerReported, onReported: () => setAnswerReported(true) },
+                    )
+                  }
+                  hitSlop={10}
+                  style={styles.reportAnswer}>
+                  <ThemedText variant="caption" tone="muted">
+                    {answerReported ? 'Reported' : 'Report this answer'}
+                  </ThemedText>
+                </Pressable>
               </>
             ) : null}
           </Card>
@@ -810,6 +834,7 @@ function Toggle({
 const styles = StyleSheet.create({
   block: { marginTop: Spacing.three },
   speakButton: { marginTop: Spacing.two },
+  reportAnswer: { alignSelf: 'flex-start', marginTop: Spacing.three },
   rowBetween: {
     flexDirection: 'row',
     alignItems: 'center',

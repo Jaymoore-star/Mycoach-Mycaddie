@@ -16,6 +16,7 @@
 import { BAG_ORDER } from './bag';
 import type { CaddieRecommendation } from './caddie';
 import type { CoachProfile } from './coachPersona';
+import { MANUAL_CADDIE_CORE } from './manual';
 
 /** OpenAI's TTS voices. Mirrors `TtsVoice` in `coachPersona.ts`. */
 export const TTS_VOICES = [
@@ -408,6 +409,8 @@ export type CaddieVoiceContext = {
 export function buildCaddieSystemPrompt(
   coach: CoachProfile,
   ctx: CaddieVoiceContext,
+  /** At most one short section of the manual that bears on the question. */
+  manualPassage = '',
 ): string {
   const spec = coach.levelSpec;
 
@@ -431,6 +434,11 @@ export function buildCaddieSystemPrompt(
     `Teach only at this level: ${spec.breakingScore} - ${spec.subtitle}.`,
     `Vocabulary you use: ${spec.keyVocabulary.join(', ')}.`,
     `Never mention: ${spec.avoidKeywords.join(', ')}.`,
+    // The manual is the authority, and the persona still carries some of the
+    // older edition's terms; the caddie speaks the current book's.
+    MANUAL_CADDIE_CORE,
+    'Where the vocabulary above differs from the manual, use the manual.',
+    manualPassage ? `A passage from the manual that bears on this question:\n${manualPassage}` : '',
     'You are being heard, not read. One or two short sentences, no lists, no headings,',
     'no markdown, no emoji. Say the number and the club, then one thought. Never',
     'contradict the club recommendation above - if you disagree, explain the trade-off',

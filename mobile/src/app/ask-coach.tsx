@@ -1,7 +1,7 @@
 import { usePaginatedQuery, useMutation, useQuery } from 'convex/react';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ArrowUp, RotateCcw, Square, Volume2, X } from 'lucide-react-native';
+import { ArrowUp, Flag, RotateCcw, Square, Volume2, X } from 'lucide-react-native';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -28,6 +28,7 @@ import { FontSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLiveDictation } from '@/hooks/use-live-dictation';
 import { useSpeech } from '@/hooks/use-voice';
+import { reportAiContent, useReportedTargets } from '@/lib/report';
 
 /**
  * Ask your coach - the conversational half of My Coach.
@@ -80,6 +81,8 @@ export default function AskCoachScreen() {
 
   const sendMessage = useMutation(api.coachChat.sendMessage);
   const clearConversation = useMutation(api.coachChat.clearConversation);
+  const reportCoachMessage = useMutation(api.reports.reportCoachMessage);
+  const reported = useReportedTargets();
 
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -101,6 +104,15 @@ export default function AskCoachScreen() {
     }
     setSpokenKey(message.key);
     void speech.speak(message.text);
+  }
+
+  /** A stored reply's key is its message id, which is what the report names. */
+  function reportMessage(message: ChatMessage) {
+    if (!profile) return;
+    reportAiContent(
+      (reason) => reportCoachMessage({ profileId: profile._id, messageId: message.key, reason }),
+      { alreadyReported: reported.has(message.key) },
+    );
   }
 
   /**
@@ -308,6 +320,8 @@ export default function AskCoachScreen() {
                 accent={coach.accent}
                 name={coach.name}
                 onSpeak={speakMessage}
+                onReport={reportMessage}
+                reported={reported.has(item.key)}
                 speaking={spokenKey === item.key && speech.isSpeaking}
                 loadingSpeech={spokenKey === item.key && speech.state === 'loading'}
               />
@@ -405,6 +419,8 @@ const Bubble = memo(function Bubble({
   accent,
   name,
   onSpeak,
+  onReport,
+  reported,
   speaking,
   loadingSpeech,
 }: {
@@ -412,6 +428,9 @@ const Bubble = memo(function Bubble({
   accent: string;
   name: string;
   onSpeak: (message: ChatMessage) => void;
+  onReport: (message: ChatMessage) => void;
+  /** Already reported by this golfer: shown as done rather than offered. */
+  reported: boolean;
   speaking: boolean;
   loadingSpeech: boolean;
 }) {
@@ -468,24 +487,45 @@ const Bubble = memo(function Bubble({
         {/* The coach's own words, spoken. Nothing to gain from replaying
             the golfer's own message back at them, so it is one-sided. */}
         {!mine && !message.pending && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={speaking ? `Stop ${name}` : `Hear ${name} say this`}
-            accessibilityState={{ busy: loadingSpeech }}
-            onPress={() => onSpeak(message)}
-            hitSlop={10}
-            style={styles.speakRow}>
-            {loadingSpeech ? (
-              <ActivityIndicator size="small" color={accent} />
-            ) : speaking ? (
-              <Square size={12} color={accent} fill={accent} />
-            ) : (
-              <Volume2 size={14} color={colors.textMuted} />
-            )}
-            <ThemedText variant="caption" tone="muted">
-              {loadingSpeech ? 'One moment' : speaking ? 'Stop' : 'Hear it'}
-            </ThemedText>
-          </Pressable>
+          <View style={styles.actionRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={speaking ? `Stop ${name}` : `Hear ${name} say this`}
+              accessibilityState={{ busy: loadingSpeech }}
+              onPress={() => onSpeak(message)}
+              hitSlop={10}
+              style={styles.speakRow}>
+              {loadingSpeech ? (
+                <ActivityIndicator size="small" color={accent} />
+              ) : speaking ? (
+                <Square size={12} color={accent} fill={accent} />
+              ) : (
+                <Volume2 size={14} color={colors.textMuted} />
+              )}
+              <ThemedText variant="caption" tone="muted">
+                {loadingSpeech ? 'One moment' : speaking ? 'Stop' : 'Hear it'}
+              </ThemedText>
+            </Pressable>
+
+            {/* Google Play requires a way to flag what the AI wrote. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                reported ? 'You have reported this reply' : `Report this reply from ${name}`
+              }
+              onPress={() => onReport(message)}
+              hitSlop={10}
+              style={styles.speakRow}>
+              <Flag
+                size={13}
+                color={colors.textMuted}
+                fill={reported ? colors.textMuted : 'transparent'}
+              />
+              <ThemedText variant="caption" tone="muted">
+                {reported ? 'Reported' : 'Report'}
+              </ThemedText>
+            </Pressable>
+          </View>
         )}
       </View>
     </View>
@@ -613,6 +653,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  actionRow: { flexDirection: 'row', gap: Spacing.four },
   speakRow: {
     flexDirection: 'row',
     alignItems: 'center',
