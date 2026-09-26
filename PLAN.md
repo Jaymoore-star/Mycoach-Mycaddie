@@ -59,32 +59,35 @@ Largest screens: `caddie` (3,281), `coach` (1,153), `swing capture` (971),
 
 ## Resume here
 
-**Last worked: 24 September 2026 - Google Play prep and the Dominus manual in
-the AI. All committed. 652 tests pass, lint and typecheck clean.** Details in
-"Play Store prep" below. Where things stand:
+**Last worked: 26 September 2026 - the app is on Google Play internal
+testing. 652 tests pass, typecheck clean.** Where things stand:
 
-- **Play Console:** Dominus Golf organisation account exists (owner: Jay).
-  Jeet cannot accept the Play app signing terms - Jay has to click **Create
-  app** himself (name `MyCoach / MyCaddie`, package
-  `com.dominusgolf.mycoachmycaddie`, English (US), App, Free) and give Jeet
-  Admin. Every other answer for the console is in
-  `mobile/store-assets/PLAY_CONSOLE.md`, with the icon and feature graphic.
-- **Builds:** test APK is build 7 (version code 7). The production `.aab` with
-  version code 6 has the Swing gallery bug - **do not upload it**; build a new
-  one with `eas build -p android --profile production` once testing is done.
-- **Prod backend:** deployed up to the "one report per response" change. The
-  manual-in-AI work, the gpt-4o-mini fallback and the eight-checkpoint swing
-  fix were pushed to **dev only** - run `npx convex deploy` to put them live.
-  An OTA update (`eas update --channel preview`) went to build 7 on 24 Sep;
-  set `EXPO_PUBLIC_CONVEX_URL` / `EXPO_PUBLIC_CONVEX_SITE_URL` to prod before
-  any `eas update`, or it bundles the dev URLs from `.env.local`.
-- **Waiting on Jay:** (1) create the app in Play Console; (2) whether the drill
-  program should be rewritten to the new manual (see "The Dominus Golf manual in
-  the AI"); (3) raise the OpenAI usage tier before the public listing; (4)
-  Samantha's email - DNS is correct, likely POP vs IMAP on her devices.
-- **Next for Jeet:** deploy, re-test a real swing clip (all eight letters),
-  store screenshots from BlueStacks at 1080x1920, then the production `.aab`
-  and Internal testing.
+- **Play Console:** every "Set up your app" item is done - declarations, data
+  safety, content rating, store listing with 8 screenshots. Answers as given
+  are in `mobile/store-assets/PLAY_CONSOLE.md`; three changed from the first
+  draft there (voice is *not* ephemeral, partial data deletion is "No" until
+  `legal.ts` documents it, advertising ID "No").
+- **Build:** version code 8 (`1.0.0`) is live on Internal testing, list
+  "Team" (Jeet + Jay). Jeet tested it in BlueStacks; Jay is testing on his
+  phone. `AD_ID` is in `blockedPermissions` so the manifest agrees with the
+  advertising ID declaration.
+- **Prod backend:** manual-in-AI, the gpt-4o-mini fallback and the
+  eight-checkpoint swing fix are deployed; `SUPPORT_EMAIL` is set. Google
+  sign-in now always shows the account chooser (`prompt: select_account` in
+  `convex/auth.ts`) - without it, a browser with one known Google account
+  signed straight in and nobody could switch accounts. Server-only; needs
+  `npx convex deploy`, no new build.
+- **Waiting on Jay:** (1) his test pass on a real phone, especially a swing
+  clip; (2) whether the drill program should be rewritten to the new manual;
+  (3) raise the OpenAI usage tier before the public listing; (4) whether the
+  feature graphic's golf course photo is AI-generated - the store listing's AI
+  asset declaration depends on it; (5) Samantha's email - DNS is correct,
+  likely POP vs IMAP on her devices.
+- **Next:** fix whatever Jay finds, then promote release 8 to Production and
+  send it for review. Before that: publish the Google OAuth app to Production
+  (Testing mode caps it at 100 accounts), and while the app is in review do
+  not run `devTools:resetDeployment` on prod - it deletes the reviewers' demo
+  account.
 
 **Before that: 18 September 2026. The app is feature-complete and
 release-shaped: real brand assets, valid native config, an EAS build profile,

@@ -20,7 +20,13 @@ const PROVIDER_LABEL: Record<string, string> = {
 };
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [Password, Google],
+  providers: [
+    Password,
+    // Google skips the account chooser when the browser holds one signed-in
+    // account that has used the app before, so signing out and back in could
+    // never switch accounts. `select_account` makes it ask every time.
+    Google({ authorization: { params: { prompt: 'select_account' } } }),
+  ],
   callbacks: {
     /**
      * Native apps finish OAuth by deep-linking back into the app rather than
